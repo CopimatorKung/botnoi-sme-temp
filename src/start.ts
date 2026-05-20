@@ -1,3 +1,17 @@
+// SSR polyfill: supabase client references localStorage at module load.
+// Provide a no-op storage on the server so SSR doesn't crash.
+if (typeof globalThis.localStorage === "undefined") {
+  const mem = new Map<string, string>();
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => mem.get(k) ?? null,
+    setItem: (k: string, v: string) => { mem.set(k, v); },
+    removeItem: (k: string) => { mem.delete(k); },
+    clear: () => { mem.clear(); },
+    key: (i: number) => Array.from(mem.keys())[i] ?? null,
+    get length() { return mem.size; },
+  };
+}
+
 import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
