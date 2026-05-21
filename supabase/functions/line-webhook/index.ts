@@ -37,13 +37,54 @@ async function fetchLineProfile(userId: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // health check
-  if (req.method === "GET") {
-    return new Response(JSON.stringify({ ok: true, service: "line-webhook" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  const url = new URL(req.url);
+
+  // Send push message from dashboard
+  if (req.method === "POST" && url.pathname.endsWith("/send")) {
+    try {
+      const { to, text } = await req.json();
+      if (!to || !text) {
+        return new Response(JSON.stringify({ error: "Missing 'to' or 'text'" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      console.log(`Sending message to ${to}: ${text}`);
+      const lineRes = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${CHANNEL_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify({
+          to,
+          messages: [{ type: "text", text }],
+        }),
+      });
+
+      if (!lineRes.ok) {
+        const errText = await lineRes.text();
+        console.error("LINE push API error:", errText);
+        return new Response(JSON.stringify({ error: errText }), {
+          status: lineRes.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    } catch (e) {
+      console.error("Send message error:", e);
+      return new Response(JSON.stringify({ error: String(e) }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
   }
 
+  // Webhook receiver from LINE servers
   try {
     const raw = await req.text();
     const signature = req.headers.get("x-line-signature");
@@ -98,6 +139,7 @@ Deno.serve(async (req) => {
           message_type: msg.type ?? "unknown",
           content: msg.text ?? null,
           raw_event: ev,
+          source: "line"
         });
       } else {
         // store other events (follow, unfollow, postback, etc.) as system messages
@@ -106,6 +148,7 @@ Deno.serve(async (req) => {
           message_type: `event:${ev.type}`,
           content: null,
           raw_event: ev,
+          source: "line"
         });
       }
     }

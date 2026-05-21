@@ -1,4 +1,15 @@
-project_id = "drxjbzegwqfhxoivutgv"
+project_id = "yrqcmnbeohtwfppxsitz"
 
 [functions.line-webhook]
 verify_jwt = false
+
+# bot-message: proxy endpoint สำหรับให้ Botnoi (หรือ AI bot ภายนอก) เรียกบันทึกข้อความ
+# verify_jwt = false เพราะเราตรวจ auth เองภายใน function (รองรับทั้ง service role + x-bot-secret)
+[functions.bot-message]
+verify_jwt = false
+
+# mcp-bot-message: MCP server endpoint สำหรับให้ Botnoi AI Agent เรียกบันทึกข้อความผ่าน tool call (พูด JSON-RPC 2.0)
+# verify_jwt = false เพราะตรวจ auth เองภายใน function
+[functions.mcp-bot-message]
+verify_jwt = false
+

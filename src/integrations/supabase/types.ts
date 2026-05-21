@@ -204,7 +204,7 @@ export type Database = {
       is_approved: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "member" | "pending"
+      app_role: "ceo" | "admin" | "member" | "pending"
       task_status: "open" | "in_progress" | "done" | "cancelled"
     }
     CompositeTypes: {
@@ -333,7 +333,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "member", "pending"],
+      app_role: ["ceo", "admin", "member", "pending"],
       task_status: ["open", "in_progress", "done", "cancelled"],
     },
   },
