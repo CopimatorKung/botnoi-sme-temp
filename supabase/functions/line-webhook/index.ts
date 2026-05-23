@@ -13,6 +13,10 @@ const CHANNEL_SECRET = Deno.env.get("LINE_CHANNEL_SECRET") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Botnoi Custom Channel — ใช้ Botnoi เป็น AI brain ผ่าน proxy
+const BOTNOI_BOT_ID = Deno.env.get("BOTNOI_BOT_ID") ?? "";
+const BOTNOI_SIGNING_SECRET = Deno.env.get("BOTNOI_SIGNING_SECRET") ?? "";
+
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
 function verifySignature(body: string, signature: string | null): boolean {
@@ -20,6 +24,65 @@ function verifySignature(body: string, signature: string | null): boolean {
   if (!signature) return false;
   const hmac = createHmac("sha256", CHANNEL_SECRET).update(body).digest("base64");
   return hmac === signature;
+}
+
+// ส่งข้อความลูกค้าไป Botnoi Custom Channel (fire-and-forget)
+// Botnoi จะตอบกลับมาที่ Transmit Endpoint (botnoi-reply function) แยก
+async function forwardToBotnoi(
+  userId: string,
+  displayName: string | undefined,
+  pictureUrl: string | undefined,
+  text: string,
+  lineMessageId: string | undefined,
+) {
+  if (!BOTNOI_BOT_ID || !BOTNOI_SIGNING_SECRET) {
+    console.warn("[line-webhook] forwardToBotnoi: missing BOTNOI_BOT_ID or BOTNOI_SIGNING_SECRET — skip");
+    return;
+  }
+
+  const url = `https://api-gateway.botnoi.ai/webhook/custom/${BOTNOI_BOT_ID}`;
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  const body = JSON.stringify({
+    bot_id: BOTNOI_BOT_ID,
+    source: {
+      source_id: userId,
+      source_type: "user",
+    },
+    sender: {
+      uid: userId,
+      display_name: displayName || "LINE User",
+      profile_img_url: pictureUrl || "",
+    },
+    message: {
+      mid: lineMessageId || `line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "text",
+      text,
+      timestamp: Number(timestamp) * 1000,
+    },
+  });
+
+  const signature = "sha256=" + createHmac("sha256", BOTNOI_SIGNING_SECRET).update(body).digest("hex");
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Platform-Signature": signature,
+        "X-Platform-Timestamp": timestamp,
+      },
+      body,
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(`[line-webhook] forwardToBotnoi failed status=${res.status} body=${errText.slice(0, 500)}`);
+    } else {
+      console.log(`[line-webhook] forwardToBotnoi ok userId=${userId} text_len=${text.length}`);
+    }
+  } catch (e) {
+    console.error("[line-webhook] forwardToBotnoi exception:", e);
+  }
 }
 
 async function fetchLineProfile(userId: string) {
@@ -141,6 +204,20 @@ Deno.serve(async (req) => {
           raw_event: ev,
           source: "line"
         });
+
+        // ส่ง text message ต่อไป Botnoi Custom Channel (fire-and-forget — ไม่รอ response)
+        // Botnoi จะตอบกลับมาที่ botnoi-reply function แยก
+        if (msg.type === "text" && typeof msg.text === "string" && msg.text.trim().length > 0) {
+          // ใช้ EdgeRuntime.waitUntil ถ้ามี ไม่งั้นยิงแล้วปล่อย Promise ทิ้ง
+          const fwd = forwardToBotnoi(userId, displayName, pictureUrl, msg.text, msg.id);
+          // deno-lint-ignore no-explicit-any
+          const er = (globalThis as any).EdgeRuntime;
+          if (er && typeof er.waitUntil === "function") {
+            er.waitUntil(fwd);
+          } else {
+            fwd.catch((e) => console.error("[line-webhook] background forward error:", e));
+          }
+        }
       } else {
         // store other events (follow, unfollow, postback, etc.) as system messages
         await supabase.from("messages").insert({

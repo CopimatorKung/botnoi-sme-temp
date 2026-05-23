@@ -13,3 +13,8 @@ verify_jwt = false
 [functions.mcp-bot-message]
 verify_jwt = false
 
+# botnoi-reply: รับคำตอบจาก Botnoi Custom Channel "Transmit Endpoint" → save DB + push LINE
+# verify_jwt = false เพราะ Botnoi เซ็น HMAC-SHA256 เอง (X-Platform-Signature)
+[functions.botnoi-reply]
+verify_jwt = false
+

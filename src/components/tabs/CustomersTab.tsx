@@ -15,6 +15,54 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, format } from "date-fns";
 import { th } from "date-fns/locale";
 
+// ── LINE Flex Message — pure data helpers (no JSX, safe for Vite HMR) ────────
+
+type FlexTextItem = { text: string; bold: boolean; sm: boolean; color: string };
+type FlexBtnItem  = { label: string; href: string };
+
+function flexExtractHeroUrl(bubble: any): string | null {
+  if (!bubble) return null;
+  if (bubble.hero?.type === "image" && bubble.hero.url) return String(bubble.hero.url);
+  if (bubble.hero?.url) return String(bubble.hero.url);
+  return null;
+}
+
+function flexExtractTexts(comp: any): FlexTextItem[] {
+  if (!comp || typeof comp !== "object") return [];
+  if (comp.type === "text" && comp.text) {
+    return [{ text: String(comp.text), bold: comp.weight === "bold",
+               sm: comp.size === "sm" || comp.size === "xs" || comp.size === "xxs",
+               color: comp.color || "" }];
+  }
+  if (Array.isArray(comp.contents)) {
+    return comp.contents.flatMap((c: any) => flexExtractTexts(c));
+  }
+  return [];
+}
+
+function flexExtractBtns(comp: any): FlexBtnItem[] {
+  if (!comp || typeof comp !== "object") return [];
+  if (comp.type === "button") {
+    const act = comp.action || {};
+    const href = act.type === "uri" ? String(act.uri || "#")
+      : act.type === "phone" ? "tel:" + String(act.data || "").replace(/[^\d+]/g, "")
+      : "#";
+    return [{ label: String(act.label || "ดูเพิ่ม"), href }];
+  }
+  if (Array.isArray(comp.contents)) {
+    return comp.contents.flatMap((c: any) => flexExtractBtns(c));
+  }
+  return [];
+}
+
+function flexGetBubbles(contents: any): any[] {
+  if (!contents) return [];
+  if (contents.type === "bubble") return [contents];
+  if (contents.type === "carousel" && Array.isArray(contents.contents)) return contents.contents;
+  return [];
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface Customer {
   id: string;
   line_user_id: string;
@@ -80,6 +128,8 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
   const [myTeams, setMyTeams] = useState<{ id: string; name: string }[]>([]);
   const [creatingTask, setCreatingTask] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<Customer | null>(null);
+  selectedRef.current = selected; // Always keep in sync with latest render
   const { user } = useAuth();
   const profileMap = useMemo(() => Object.fromEntries(profiles.map((p) => [p.id, p])), [profiles]);
 
@@ -166,18 +216,36 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
   useEffect(() => {
     loadCustomers();
     loadProfiles();
-    const ch = supabase.channel("customers-rt")
+    // ใช้ชื่อ channel ที่ unique ต่อการ mount ครั้งนี้ เพื่อป้องกัน stale subscription
+    // selectedRef ทำให้ callback อ่านค่า selected ล่าสุดเสมอ โดยไม่ต้อง recreate subscription
+    const channelName = `customers-rt-${Date.now()}`;
+    const ch = supabase.channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, () => loadCustomers())
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
-        if (selected) loadMessages(selected.id);
+        if (selectedRef.current) loadMessages(selectedRef.current.id);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[RT] subscription issue:", status, "— reloading messages manually");
+          if (selectedRef.current) loadMessages(selectedRef.current.id);
+        }
+      });
     return () => { supabase.removeChannel(ch); };
-  }, [selected?.id]);
+  }, []); // run once on mount only
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Polling fallback: หาก realtime subscription หลุด ก็ยัง refresh ทุก 30s
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (selectedRef.current) {
+        loadMessages(selectedRef.current.id);
+      }
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -198,12 +266,16 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
   };
 
   const loadMessages = async (customerId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("messages")
       .select("*")
       .eq("customer_id", customerId)
       .order("received_at", { ascending: true }) // chronological order for chat window
       .limit(50);
+    if (error) {
+      console.error("[CRM] loadMessages error:", error);
+      return;
+    }
     setMessages(data || []);
   };
 
@@ -511,11 +583,188 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
                   ) : (
                     messages.map((m) => {
                       const isAgent = m.source === "agent" || m.source === "bot";
-                      const isFlex = m.message_type === "flex" || (m.content && (m.content.includes("ขอเมนู") || m.content.includes("เมนู")));
+                      const msgType = m.message_type || "text";
+                      const raw = m.raw_event as any;
+
+                      // render เนื้อหาของ bubble ตาม message_type
+                      const renderBody = () => {
+                        // === Carousel: แสดงการ์ดจริงจาก raw_event ===
+                        if (msgType === "carousel" && raw?.carousel_cards?.length > 0) {
+                          const cards = raw.carousel_cards as any[];
+                          // ตรวจสอบว่ามี content จริงๆ ไหม (ไม่ว่าง)
+                          const hasContent = cards.some((c: any) =>
+                            c.image_url || c.thumbnail_url || c.image || c.title || c.subtitle || c.description || c.text
+                            || (c.buttons || c.actions || []).length > 0
+                          );
+                          if (!hasContent) {
+                            // fallback → แสดงเป็น text ถ้า carousel ว่าง
+                            return m.content ? <p className="whitespace-pre-wrap">{m.content}</p> : null;
+                          }
+                          return (
+                            <div className="flex flex-col gap-2 mt-0.5">
+                              {cards.map((card: any, i: number) => {
+                                const imgUrl = card.image_url || card.thumbnail_url || card.image;
+                                const subtitle = card.subtitle || card.description || card.text;
+                                const btns: any[] = card.buttons || card.actions || [];
+                                return (
+                                  <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm max-w-[240px]">
+                                    {imgUrl && (
+                                      <img src={imgUrl} alt={card.title || "card"} className="w-full h-32 object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                    )}
+                                    <div className="p-3 text-left">
+                                      {card.title && (
+                                        <h5 className="font-bold text-sm text-gray-800 leading-tight">{card.title}</h5>
+                                      )}
+                                      {subtitle && (
+                                        <p className="text-[11px] text-gray-600 mt-1 leading-normal whitespace-pre-wrap">{subtitle}</p>
+                                      )}
+                                      {btns.map((btn: any, j: number) => {
+                                        const isPhone = btn.type === "phone" || btn.type === "tel";
+                                        const href = isPhone ? `tel:${(btn.data || btn.label || "").replace(/[^\d+]/g, "")}` : (btn.data || btn.uri || btn.url || "#");
+                                        return (
+                                          <Button key={j} variant="outline"
+                                            className="w-full mt-2 text-xs py-1 h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold flex items-center justify-center gap-1"
+                                            onClick={() => window.open(href)}>
+                                            {isPhone && <Phone className="w-3 h-3" />}
+                                            {btn.label || btn.data}
+                                          </Button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+
+                        // === Buttons (single card with action buttons) ===
+                        // Botnoi ใช้ button_title / button_actions
+                        if (msgType === "buttons" && raw) {
+                          const imgUrl = raw.thumbnail_image_url || raw.thumbnailImageUrl || raw.image_url || raw.url;
+                          const title = raw.button_title || raw.title;
+                          const text = raw.text || raw.description || raw.subtitle;
+                          const btns: any[] = raw.button_actions || raw.buttons || raw.actions || [];
+                          return (
+                            <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm max-w-[240px]">
+                              {imgUrl && (
+                                <img src={imgUrl} alt={title || "card"} className="w-full h-32 object-cover"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                              )}
+                              <div className="p-3 text-left">
+                                {title && <h5 className="font-bold text-sm text-gray-800 leading-tight">{title}</h5>}
+                                {text && <p className="text-[11px] text-gray-600 mt-1 leading-normal whitespace-pre-wrap">{text}</p>}
+                                {btns.map((btn: any, j: number) => {
+                                  const isPhone = btn.type === "phone" || btn.type === "tel";
+                                  const href = isPhone ? `tel:${(btn.data || btn.label || "").replace(/[^\d+]/g, "")}` : (btn.data || btn.uri || btn.url || "#");
+                                  return (
+                                    <Button key={j} variant="outline"
+                                      className="w-full mt-2 text-xs py-1 h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold flex items-center justify-center gap-1"
+                                      onClick={() => window.open(href)}>
+                                      {isPhone && <Phone className="w-3 h-3" />}
+                                      {btn.label || btn.data}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // === Image: แสดงรูปจริง ===
+                        if (msgType === "image") {
+                          const imgUrl = raw?.url || raw?.image_url || raw?.originalContentUrl
+                            || raw?.original_content_url || raw?.src || raw?.imageUrl;
+                          if (imgUrl) {
+                            return (
+                              <img src={imgUrl} alt="image"
+                                className="rounded-xl max-w-[240px] w-full object-cover"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                            );
+                          }
+                        }
+
+                        // === Flex: render bubble card จาก flex_contents ===
+                        if (msgType === "flex") {
+                          const flexContents = raw?.flex_contents || raw?.contents;
+                          const bubbles = flexGetBubbles(flexContents);
+                          if (bubbles.length > 0) {
+                            return (
+                              <div className="flex gap-2 overflow-x-auto">
+                                {bubbles.map((bbl: any, bi: number) => {
+                                  const heroUrl = flexExtractHeroUrl(bbl);
+                                  const texts = flexExtractTexts(bbl.body || bbl.header);
+                                  const btns = flexExtractBtns(bbl.footer);
+                                  return (
+                                    <div key={bi} className="bg-white rounded-xl overflow-hidden max-w-[220px] shrink-0 shadow-md text-gray-800">
+                                      {heroUrl && (
+                                        <img src={heroUrl} alt="" className="w-full object-cover"
+                                          style={{ aspectRatio: "20/13" }}
+                                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                                      )}
+                                      {texts.length > 0 && (
+                                        <div className="px-3 py-2 flex flex-col gap-0.5">
+                                          {texts.map((t, ti) => (
+                                            <p key={ti}
+                                              className={[
+                                                "leading-snug break-words",
+                                                t.bold ? "font-bold" : "",
+                                                t.sm ? "text-xs" : "text-sm",
+                                              ].join(" ")}
+                                              style={t.color ? { color: t.color } : undefined}>
+                                              {t.text}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {btns.length > 0 && (
+                                        <div className="px-3 pb-3 flex flex-col gap-1">
+                                          {btns.map((btn, bti) => (
+                                            <a key={bti} href={btn.href} target="_blank" rel="noreferrer"
+                                              className="block w-full text-center text-xs py-1.5 px-3 rounded-lg border border-emerald-300 text-emerald-700 hover:bg-emerald-50 font-semibold">
+                                              {btn.label}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+                          // fallback ถ้าไม่มี flex_contents
+                          const altText = raw?.alt_text || raw?.altText || raw?.button_title || raw?.alternative_text || "Flex Message";
+                          return (
+                            <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 max-w-[240px]">
+                              <p className="text-xs text-white/80 italic">📦 {altText}</p>
+                            </div>
+                          );
+                        }
+
+                        // === Sticker ===
+                        if (msgType === "sticker") {
+                          return <p className="text-2xl">🎫 {m.content || "[สติกเกอร์]"}</p>;
+                        }
+
+                        // === fallback: text / อื่นๆ ===
+                        return m.content ? <p className="whitespace-pre-wrap">{m.content}</p> : null;
+                      };
+
+                      // carousel/image/flex ไม่มีพื้นหลัง bubble เมื่อมี raw_event
+                      const isRichMedia = (msgType === "carousel" && raw?.carousel_cards?.length > 0)
+                        || (msgType === "image" && (raw?.url || raw?.image_url))
+                        || (msgType === "flex" && (raw?.flex_contents || raw?.contents));
+                      const bubbleClass = isRichMedia
+                        ? "max-w-[280px] md:max-w-[320px]"
+                        : `p-2.5 px-3 rounded-2xl text-sm shadow-sm relative break-words leading-relaxed max-w-[280px] md:max-w-[320px] ${
+                            isAgent ? "bg-[#85e243] text-black rounded-tr-none" : "bg-white text-black rounded-tl-none"
+                          }`;
 
                       return (
-                        <div 
-                          key={m.id} 
+                        <div
+                          key={m.id}
                           className={`flex gap-2 max-w-[85%] ${isAgent ? "ml-auto flex-row-reverse" : "mr-auto"}`}
                         >
                           {/* Avatar for Customer (on the left) */}
@@ -539,52 +788,18 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
 
                             {/* Bubble Body */}
                             <div className="flex items-end gap-1.5">
-                              {/* Left Align timestamp for Agent messages */}
+                              {/* Timestamp (ซ้าย) สำหรับ Agent */}
                               {isAgent && (
                                 <span className="text-[9px] text-white/60 shrink-0 font-light select-none mb-1">
                                   {format(new Date(m.received_at), "HH:mm")}
                                 </span>
                               )}
 
-                              <div 
-                                className={`p-2.5 px-3 rounded-2xl text-sm shadow-sm relative break-words leading-relaxed max-w-[280px] md:max-w-[320px] ${
-                                  isAgent 
-                                    ? "bg-[#85e243] text-black rounded-tr-none" 
-                                    : "bg-white text-black rounded-tl-none"
-                                }`}
-                              >
-                                {/* Text Content */}
-                                {m.content && <p className="whitespace-pre-wrap">{m.content}</p>}
-
-                                {/* Render beautiful Noodle Shop card (Thai Cuisine Card) */}
-                                {isFlex && (
-                                  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm mt-2 max-w-[240px]">
-                                    <img 
-                                      src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&auto=format&fit=crop" 
-                                      alt="Noodles Menu" 
-                                      className="w-full h-32 object-cover"
-                                    />
-                                    <div className="p-3 text-left">
-                                      <h5 className="font-bold text-sm text-gray-800 flex items-center gap-1.5">
-                                        🍜 ร้านขายก๋วยเตี๋ยว
-                                      </h5>
-                                      <p className="text-[11px] text-gray-600 mt-1 leading-normal">
-                                        อยาก ตรวจสอบเมนู พิมพ์ ขอเมนู ในแชทเลย
-                                      </p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="w-full mt-2.5 text-xs py-1 h-7 text-emerald-600 border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold flex items-center justify-center gap-1"
-                                        onClick={() => window.open("tel:0967033424")}
-                                      >
-                                        <Phone className="w-3 h-3" />
-                                        0967033424
-                                      </Button>
-                                    </div>
-                                  </div>
-                                )}
+                              <div className={bubbleClass}>
+                                {renderBody()}
                               </div>
 
-                              {/* Right Align timestamp for Customer messages */}
+                              {/* Timestamp (ขวา) สำหรับ Customer */}
                               {!isAgent && (
                                 <span className="text-[9px] text-white/60 shrink-0 font-light select-none mb-1">
                                   {format(new Date(m.received_at), "HH:mm")}
