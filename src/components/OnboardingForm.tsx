@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,21 @@ export function OnboardingForm({ onComplete }: OnboardingFormProps) {
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Pre-fill ชื่อจาก profile ที่มีอยู่แล้ว (กรณี Google OAuth ที่มีชื่อแล้ว)
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("profiles")
+      .select("display_name, internship_start, internship_end")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.display_name) setDisplayName(data.display_name);
+        if (data?.internship_start) setStartDate(data.internship_start as string);
+        if (data?.internship_end) setEndDate(data.internship_end as string);
+      });
+  }, [user]);
+
   const canSubmit = displayName.trim() && startDate && endDate;
 
   const handleSubmit = async () => {
@@ -27,14 +42,15 @@ export function OnboardingForm({ onComplete }: OnboardingFormProps) {
       return;
     }
     setSaving(true);
+    // ใช้ upsert แทน update เพื่อรองรับกรณีที่ยังไม่มี profile row
     const { error } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: user.id,
         display_name: displayName.trim(),
         internship_start: startDate,
         internship_end: endDate,
-      } as any)
-      .eq("id", user.id);
+      } as any);
     setSaving(false);
     if (error) {
       toast.error(error.message);

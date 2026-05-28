@@ -10,7 +10,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, X, MessageSquare, Send, Phone, Tag, FileText, ChevronRight, UserCheck, SlidersHorizontal, UserPlus, UserMinus, Copy } from "lucide-react";
+import { Plus, X, MessageSquare, Send, Phone, Tag, FileText, ChevronRight, UserCheck, SlidersHorizontal, UserPlus, UserMinus, Copy, Lock } from "lucide-react";
+
+// === Feature flag — ล็อกช่องตอบในเว็บ (ตอบผ่าน LINE OA Manager เท่านั้น)
+// เปลี่ยนเป็น false เมื่ออยากให้ staff ตอบจากเว็บได้
+const CHAT_INPUT_LOCKED = true;
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, format } from "date-fns";
 import { th } from "date-fns/locale";
@@ -583,6 +587,7 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
                   ) : (
                     messages.map((m) => {
                       const isAgent = m.source === "agent" || m.source === "bot";
+                      const isBot = m.source === "bot";
                       const msgType = m.message_type || "text";
                       const raw = m.raw_event as any;
 
@@ -759,7 +764,11 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
                       const bubbleClass = isRichMedia
                         ? "max-w-[280px] md:max-w-[320px]"
                         : `p-2.5 px-3 rounded-2xl text-sm shadow-sm relative break-words leading-relaxed max-w-[280px] md:max-w-[320px] ${
-                            isAgent ? "bg-[#85e243] text-black rounded-tr-none" : "bg-white text-black rounded-tl-none"
+                            m.source === "bot"
+                              ? `bg-[#3b82f6] text-white ${isAgent ? "rounded-tr-none" : "rounded-tl-none"}`
+                              : m.source === "agent"
+                                ? `bg-[#f59e0b] text-white rounded-tr-none`
+                                : `bg-[#22c55e] text-white rounded-tl-none`
                           }`;
 
                       return (
@@ -816,24 +825,34 @@ export function CustomersTab({ setActiveTab, pendingCustomerId, clearPendingCust
               </ScrollArea>
 
               {/* LINE Message Sender Input Bar */}
-              <div className="p-3 bg-slate-100 border-t flex gap-2 items-center z-10 shadow-inner">
-                <Input
-                  placeholder="พิมพ์ข้อความตอบกลับ LINE..."
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  disabled={sending}
-                  className="flex-1 bg-white border-slate-200 focus-visible:ring-emerald-500 rounded-xl"
-                />
-                <Button 
-                  onClick={handleSend} 
-                  disabled={sending || !replyText.trim()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow px-4 flex items-center gap-1.5 shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>ส่ง</span>
-                </Button>
-              </div>
+              {CHAT_INPUT_LOCKED ? (
+                // === Locked mode — ตอบผ่าน LINE OA Manager เท่านั้น ===
+                <div className="p-3 bg-slate-100 border-t z-10 shadow-inner">
+                  <div className="flex items-center justify-center gap-2 py-3 px-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-800">
+                    <Lock className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">ตอบลูกค้าผ่าน LINE Official Account Manager เท่านั้น</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-100 border-t flex gap-2 items-center z-10 shadow-inner">
+                  <Input
+                    placeholder="พิมพ์ข้อความตอบกลับ LINE..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    disabled={sending}
+                    className="flex-1 bg-white border-slate-200 focus-visible:ring-emerald-500 rounded-xl"
+                  />
+                  <Button
+                    onClick={handleSend}
+                    disabled={sending || !replyText.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow px-4 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>ส่ง</span>
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* 2. Customer CRM Sidebar Column */}

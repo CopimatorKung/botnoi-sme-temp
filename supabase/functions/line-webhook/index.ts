@@ -207,7 +207,8 @@ Deno.serve(async (req) => {
 
         // ส่ง text message ต่อไป Botnoi Custom Channel (fire-and-forget — ไม่รอ response)
         // Botnoi จะตอบกลับมาที่ botnoi-reply function แยก
-        if (msg.type === "text" && typeof msg.text === "string" && msg.text.trim().length > 0) {
+        // ถ้ามี assigned_to แล้ว = staff รับดูแลแล้ว ไม่ส่งต่อ Botnoi (bot หยุดตอบ)
+        if (msg.type === "text" && typeof msg.text === "string" && msg.text.trim().length > 0 && !customer.assigned_to) {
           // ใช้ EdgeRuntime.waitUntil ถ้ามี ไม่งั้นยิงแล้วปล่อย Promise ทิ้ง
           const fwd = forwardToBotnoi(userId, displayName, pictureUrl, msg.text, msg.id);
           // deno-lint-ignore no-explicit-any

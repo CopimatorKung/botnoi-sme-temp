@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Check, X, ChevronDown } from "lucide-react";
+import { Check, X, ChevronDown, Search } from "lucide-react";
+import { UserProfileViewDialog } from "@/components/UserProfileViewDialog";
 
 interface Member {
   id: string;
@@ -31,6 +32,20 @@ const ROLE_STYLE: Record<ActiveRole, string> = {
 const ROLE_LABEL: Record<ActiveRole, string> = {
   developer: "Developer", ceo: "CEO", admin: "Admin", team_leader: "Team Leader", member: "Member",
 };
+const ROLE_BORDER: Record<ActiveRole, string> = {
+  developer:   "border-l-rose-500",
+  ceo:         "border-l-purple-500",
+  admin:       "border-l-primary",
+  team_leader: "border-l-blue-500",
+  member:      "border-l-slate-300",
+};
+const ROLE_RING: Record<ActiveRole, string> = {
+  developer:   "ring-rose-300",
+  ceo:         "ring-purple-300",
+  admin:       "ring-primary/40",
+  team_leader: "ring-blue-300",
+  member:      "ring-slate-200",
+};
 
 export function TeamTab() {
   const { role, user } = useAuth();
@@ -38,6 +53,9 @@ export function TeamTab() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [view, setView] = useState<"active" | "pending">("active");
   const [pendingApproval, setPendingApproval] = useState<{ uid: string; name: string; role: ActiveRole } | null>(null);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [search, setSearch]         = useState("");
+  const [roleFilter, setRoleFilter] = useState<ActiveRole | null>(null);
   const isDeveloper = role === "developer";
   const isCEO = role === "ceo" || role === "developer";
   const isAdmin = role === "admin" || role === "ceo" || role === "developer";
@@ -125,17 +143,13 @@ export function TeamTab() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
 
-      {role === "member" && (
-        <Card className="p-4 text-sm text-muted-foreground">
-          คุณดูรายชื่อทีมได้ — การจัดการสิทธิ์ต้องใช้ Admin ขึ้นไป
-        </Card>
-      )}
-      {isTeamLeader && (
-        <Card className="p-4 text-sm text-muted-foreground border-blue-100 bg-blue-50/50">
-          คุณเป็น Team Leader — สามารถอนุมัติผู้ใช้งานใหม่เป็น Member ได้
-        </Card>
+{isTeamLeader && (
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-50/60 border border-blue-100 text-sm text-blue-700">
+          <span className="mt-0.5">🏷️</span>
+          <span>คุณเป็น Team Leader — สามารถอนุมัติผู้ใช้งานใหม่เป็น Member ได้</span>
+        </div>
       )}
 
       {/* Tab switcher */}
@@ -169,12 +183,79 @@ export function TeamTab() {
         })}
       </div>
 
+      {/* Search + role filter — เฉพาะ tab สมาชิก */}
+      {view === "active" && (
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2.5">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อหรืออีเมล..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-9 rounded-lg border border-border bg-background text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {/* Role filter chips */}
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-muted-foreground font-medium mr-0.5">Role:</span>
+            <button
+              onClick={() => setRoleFilter(null)}
+              className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                !roleFilter ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:bg-muted"
+              }`}
+            >
+              ทั้งหมด
+            </button>
+            {(["developer","ceo","admin","team_leader","member"] as ActiveRole[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRoleFilter(roleFilter === r ? null : r)}
+                className={`text-xs font-semibold px-3 py-1 rounded-full border transition-all ${
+                  roleFilter === r
+                    ? ROLE_STYLE[r]
+                    : "bg-background text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                {ROLE_LABEL[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-2">
         {members
           .filter((m) => {
             const hasActive = (["developer","ceo","admin","team_leader","member"] as ActiveRole[]).some((r) => m.roles.includes(r));
             const hasPending = m.roles.includes("pending") && !hasActive;
-            return view === "active" ? hasActive : hasPending;
+            if (!(view === "active" ? hasActive : hasPending)) return false;
+            if (view === "active" && search.trim()) {
+              const q = search.toLowerCase();
+              if (!(m.display_name || "").toLowerCase().includes(q) && !(m.email || "").toLowerCase().includes(q)) return false;
+            }
+            if (view === "active" && roleFilter && !m.roles.includes(roleFilter)) return false;
+            return true;
+          })
+          .sort((a, b) => {
+            const ROLE_ORDER: Record<string, number> = {
+              developer: 0, ceo: 1, admin: 2, team_leader: 3, member: 4, pending: 5,
+            };
+            const getRank = (roles: string[]) => {
+              const ranks = roles.map((r) => ROLE_ORDER[r] ?? 99);
+              return Math.min(...ranks);
+            };
+            const diff = getRank(a.roles) - getRank(b.roles);
+            if (diff !== 0) return diff;
+            // ถ้า role เท่ากัน เรียงตามชื่อ A→Z
+            return (a.display_name || a.email || "").localeCompare(b.display_name || b.email || "", "th");
           })
           .map((m) => {
           const activeRole = (["developer","ceo","admin","team_leader","member"] as ActiveRole[]).find((r) => m.roles.includes(r));
@@ -182,30 +263,48 @@ export function TeamTab() {
           const isApproving = approvingId === m.id;
           const canEdit = isAdmin && m.id !== user?.id && !!activeRole;
           const roleOptions = activeRole ? getRoleOptions(activeRole) : [];
+          const isMe = m.id === user?.id;
 
           return (
-            <Card key={m.id} className="p-3 flex items-center gap-3 flex-wrap">
-              <Avatar>
-                <AvatarImage src={m.avatar_url || undefined} />
-                <AvatarFallback>{m.display_name?.[0] || m.email?.[0] || "?"}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">
-                  {m.display_name || m.email || <span className="text-muted-foreground italic text-xs">ยังไม่มีโปรไฟล์</span>}{" "}
-                  {m.id === user?.id && <span className="text-xs text-muted-foreground">(คุณ)</span>}
-                </p>
-                {!m.display_name && !m.email && (
-                  <p className="text-[10px] text-muted-foreground font-mono truncate">{m.id}</p>
-                )}
-              </div>
+            <Card
+              key={m.id}
+              className={`flex items-center gap-3 px-4 py-3 border-l-4 transition-shadow hover:shadow-sm ${
+                activeRole ? ROLE_BORDER[activeRole] : "border-l-yellow-400"
+              }`}
+            >
+              {/* Avatar + ชื่อ — กดเพื่อดูโปรไฟล์ */}
+              <button
+                type="button"
+                className="flex items-center gap-3 flex-1 min-w-0 text-left group"
+                onClick={() => setViewingUserId(m.id)}
+                title="ดูโปรไฟล์"
+              >
+                <Avatar className={`h-10 w-10 ring-2 ring-offset-1 ${activeRole ? ROLE_RING[activeRole] : "ring-yellow-200"}`}>
+                  <AvatarImage src={m.avatar_url || undefined} />
+                  <AvatarFallback className="text-sm font-semibold">
+                    {m.display_name?.[0]?.toUpperCase() || m.email?.[0]?.toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm leading-tight group-hover:text-primary transition-colors">
+                    {m.display_name || <span className="text-muted-foreground italic font-normal text-xs">ยังไม่มีโปรไฟล์</span>}
+                    {isMe && <span className="ml-1.5 text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">คุณ</span>}
+                  </p>
+                  {(m.email || (!m.display_name && !m.email)) && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {m.email || <span className="font-mono text-[10px]">{m.id}</span>}
+                    </p>
+                  )}
+                </div>
+              </button>
 
               {/* Role badge — dropdown ถ้า canEdit */}
-              <div className="flex gap-1.5 items-center flex-wrap">
+              <div className="flex gap-1.5 items-center shrink-0">
                 {activeRole && (
                   canEdit && roleOptions.length > 0 ? (
                     <Popover>
                       <PopoverTrigger asChild>
-                        <button className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 ${ROLE_STYLE[activeRole]}`}>
+                        <button className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 ${ROLE_STYLE[activeRole]}`}>
                           {ROLE_LABEL[activeRole]}
                           <ChevronDown className="w-3 h-3 opacity-70" />
                         </button>
@@ -250,17 +349,19 @@ export function TeamTab() {
                       </PopoverContent>
                     </Popover>
                   ) : (
-                    <Badge className={ROLE_STYLE[activeRole]}>{ROLE_LABEL[activeRole]}</Badge>
+                    <Badge className={`${ROLE_STYLE[activeRole]} px-2.5 py-1 text-xs`}>{ROLE_LABEL[activeRole]}</Badge>
                   )
                 )}
                 {isPending && (
-                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">รออนุมัติ</Badge>
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 px-2.5 py-1 text-xs">
+                    รออนุมัติ
+                  </Badge>
                 )}
               </div>
 
               {/* Pending: อนุมัติ / ไม่อนุมัติ */}
               {isPending && (isAdmin || isTeamLeader) && m.id !== user?.id && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 shrink-0">
                   {isApproving ? (
                     <>
                       <Select onValueChange={(v) => setPendingApproval({ uid: m.id, name: m.display_name || m.email || "—", role: v as ActiveRole })}>
@@ -307,6 +408,13 @@ export function TeamTab() {
           );
         })}
       </div>
+
+      {/* View profile dialog */}
+      <UserProfileViewDialog
+        userId={viewingUserId}
+        open={!!viewingUserId}
+        onOpenChange={(o) => { if (!o) setViewingUserId(null); }}
+      />
 
       {/* Confirm approve dialog */}
       <AlertDialog open={!!pendingApproval} onOpenChange={(o) => { if (!o) setPendingApproval(null); }}>

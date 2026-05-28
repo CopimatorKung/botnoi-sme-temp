@@ -1,56 +1,109 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Copy, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Paperclip, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
 export function SettingsTab() {
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const webhookUrl = `https://${projectId}.supabase.co/functions/v1/line-webhook`;
+  const { role } = useAuth();
+  const [allowFileUpload, setAllowFileUpload] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const copy = (v: string) => {
-    navigator.clipboard.writeText(v);
-    toast.success("คัดลอกแล้ว");
+  const canManage = role === "admin" || role === "ceo" || role === "developer";
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    const { data } = await supabase
+      .from("app_settings" as any)
+      .select("value")
+      .eq("key", "allow_file_upload")
+      .single();
+    if (data) setAllowFileUpload((data as any).value === "true");
+    setLoadingSettings(false);
   };
 
+  const toggleFileUpload = async (enabled: boolean) => {
+    if (!canManage || saving) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("app_settings" as any)
+      .update({ value: enabled ? "true" : "false" })
+      .eq("key", "allow_file_upload");
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setAllowFileUpload(enabled);
+      toast.success(enabled ? "เปิดการแนบไฟล์แล้ว" : "ปิดการแนบไฟล์แล้ว");
+    }
+  };
+
+  if (!canManage) {
+    return (
+      <div className="space-y-4 max-w-3xl">
+        <p className="text-sm text-muted-foreground">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4 max-w-3xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>เชื่อมต่อกับ LINE Official Account</CardTitle>
-          <CardDescription>นำ URL ด้านล่างไปวางใน LINE Developers Console เพื่อให้ข้อความวิ่งเข้าระบบอัตโนมัติ</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Webhook URL</label>
-            <div className="flex gap-2 mt-1">
-              <Input readOnly value={webhookUrl} className="font-mono text-xs" />
-              <Button variant="outline" size="icon" onClick={() => copy(webhookUrl)}><Copy className="w-4 h-4" /></Button>
+    <div className="space-y-6 max-w-3xl">
+      {/* Header */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg bg-slate-100 border flex items-center justify-center">
+          <Settings2 className="w-4 h-4 text-slate-600" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold leading-tight">จัดการเว็บ</h2>
+          <p className="text-xs text-muted-foreground">ควบคุมฟีเจอร์และการตั้งค่าของระบบ</p>
+        </div>
+      </div>
+
+      {/* Feature flags */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-0.5">
+          ฟีเจอร์เว็บ
+        </p>
+
+        <Card className="divide-y">
+          {/* Allow file upload toggle */}
+          <div className="flex items-center justify-between gap-4 p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Paperclip className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">อนุญาตให้แนบไฟล์</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  เปิด/ปิดการอัปโหลดไฟล์แนบในหน้า
+                  <br />
+                  "ส่งงานให้แอดมินตรวจสอบ"
+                </p>
+                <span className={`inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                  allowFileUpload
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-slate-100 text-slate-500 border border-slate-200"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${allowFileUpload ? "bg-emerald-500" : "bg-slate-400"}`} />
+                  {allowFileUpload ? "เปิดอยู่" : "ปิดอยู่"}
+                </span>
+              </div>
             </div>
+            <Switch
+              checked={allowFileUpload}
+              onCheckedChange={toggleFileUpload}
+              disabled={loadingSettings || saving}
+              className="shrink-0"
+            />
           </div>
-
-          <div className="bg-muted/50 rounded-md p-4 text-sm space-y-2">
-            <p className="font-medium">วิธีตั้งค่า:</p>
-            <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-              <li>เข้า <a href="https://developers.line.biz/console/" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-0.5">LINE Developers Console <ExternalLink className="w-3 h-3" /></a></li>
-              <li>เลือก Channel ของ Messaging API ที่คุณใช้</li>
-              <li>ไปที่แท็บ <strong>Messaging API</strong></li>
-              <li>วาง Webhook URL ด้านบนในช่อง Webhook URL แล้วกด <strong>Update</strong></li>
-              <li>กด <strong>Verify</strong> เพื่อทดสอบ — ควรขึ้น Success</li>
-              <li>เปิดสวิตช์ <strong>Use webhook</strong> ให้เป็น ON</li>
-              <li>ปิด <strong>Auto-reply messages</strong> ถ้าไม่อยากให้บอทตอบอัตโนมัติ</li>
-            </ol>
-          </div>
-
-          <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 rounded-md p-4 text-sm">
-            <p className="font-medium text-yellow-900 dark:text-yellow-200">💡 ความปลอดภัย</p>
-            <p className="text-yellow-800 dark:text-yellow-300 mt-1">
-              Channel Access Token และ Channel Secret ถูกเก็บเป็น secret อย่างปลอดภัยใน backend แล้ว
-              ถ้าต้องการเปลี่ยน token ใหม่ติดต่อ admin ได้
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
