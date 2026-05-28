@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Bell, Check, X } from "lucide-react";
+import { Bell, Check, X, CheckCircle2, XCircle } from "lucide-react";
 
 interface Invitation {
   id: string;
@@ -16,22 +16,47 @@ interface Invitation {
   inviter_name: string;
 }
 
-export function NotificationBell() {
+interface TaskNotification {
+  id: string;
+  type: "approved" | "rejected";
+  task_id: string | null;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+interface NotificationBellProps {
+  onTaskClick?: (taskId: string) => void;
+}
+
+export function NotificationBell({ onTaskClick }: NotificationBellProps) {
   const { user } = useAuth();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [taskNotifs, setTaskNotifs] = useState<TaskNotification[]>([]);
   const [open, setOpen] = useState(false);
+
+  const totalUnread = invitations.length + taskNotifs.filter((n) => !n.is_read).length;
 
   useEffect(() => {
     if (!user) return;
     loadInvitations();
-    const ch = supabase.channel("invitations-rt")
+    loadTaskNotifs();
+
+    const ch = supabase.channel("notif-bell-rt")
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "team_invitations",
         filter: `invited_user_id=eq.${user.id}`,
       }, () => loadInvitations())
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${user.id}`,
+      }, () => loadTaskNotifs())
       .subscribe();
+
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
@@ -66,6 +91,26 @@ export function NotificationBell() {
     })));
   };
 
+  const loadTaskNotifs = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("notifications" as any)
+      .select("id,type,task_id,message,is_read,created_at")
+      .eq("user_id", user.id)
+      .in("type", ["approved", "rejected"])
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    // ถ้า table ยังไม่มีก็ข้ามไป
+    if (error) return;
+    setTaskNotifs((data ?? []) as TaskNotification[]);
+  };
+
+  const markRead = async (id: string) => {
+    await supabase.from("notifications" as any).update({ is_read: true }).eq("id", id);
+    setTaskNotifs((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+  };
+
   const accept = async (inv: Invitation) => {
     const { error } = await supabase.from("team_members" as any).insert({
       team_id: inv.team_id, user_id: user!.id, position: "member",
@@ -82,14 +127,16 @@ export function NotificationBell() {
     loadInvitations();
   };
 
+  const hasItems = invitations.length > 0 || taskNotifs.length > 0;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
           <Bell className="w-5 h-5 text-muted-foreground" />
-          {invitations.length > 0 && (
+          {totalUnread > 0 && (
             <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-              {invitations.length}
+              {totalUnread > 9 ? "9+" : totalUnread}
             </span>
           )}
         </button>
@@ -97,17 +144,47 @@ export function NotificationBell() {
       <PopoverContent align="end" className="w-80 p-0 overflow-hidden shadow-lg">
         <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
           <p className="font-semibold text-sm">การแจ้งเตือน</p>
-          {invitations.length > 0 && (
-            <span className="text-xs text-muted-foreground">{invitations.length} รายการ</span>
+          {totalUnread > 0 && (
+            <span className="text-xs text-muted-foreground">{totalUnread} ยังไม่อ่าน</span>
           )}
         </div>
-        {invitations.length === 0 ? (
+
+        {!hasItems ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             <Bell className="w-7 h-7 mx-auto mb-2 opacity-20" />
             ไม่มีการแจ้งเตือน
           </div>
         ) : (
           <div className="divide-y max-h-96 overflow-y-auto">
+            {/* Task review notifications */}
+            {taskNotifs.map((n) => (
+              <div
+                key={n.id}
+                className={`px-4 py-3 flex gap-3 items-start cursor-pointer transition-colors hover:bg-muted/40 ${!n.is_read ? "bg-blue-50/60 dark:bg-blue-950/20" : ""}`}
+                onClick={() => {
+                  if (!n.is_read) markRead(n.id);
+                  if (n.task_id && onTaskClick) {
+                    setOpen(false);
+                    onTaskClick(n.task_id);
+                  }
+                }}
+              >
+                <div className="shrink-0 mt-0.5">
+                  {n.type === "approved"
+                    ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    : <XCircle className="w-4 h-4 text-red-500" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm leading-snug">{n.message}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(n.created_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                  </p>
+                </div>
+                {!n.is_read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />}
+              </div>
+            ))}
+
+            {/* Team invitations */}
             {invitations.map((inv) => (
               <div key={inv.id} className="px-4 py-3.5 space-y-2.5">
                 <div className="text-sm leading-relaxed">
