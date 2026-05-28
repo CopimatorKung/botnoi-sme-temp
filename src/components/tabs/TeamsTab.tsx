@@ -98,6 +98,13 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
 
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
+  // Swap leader confirmation
+  const [swapTarget, setSwapTarget] = useState<{
+    memberId: string; teamId: string;
+    newLeaderName: string; oldLeaderName: string;
+  } | null>(null);
+  const [swapping, setSwapping] = useState(false);
   const [teamDoneTasks, setTeamDoneTasks] = useState<TaskSummary[]>([]);
   const [chartPeriod, setChartPeriod] = useState<"7d" | "1m" | "3m" | "6m" | "1y" | "custom">("1m");
   const [chartFrom, setChartFrom] = useState("");
@@ -251,33 +258,43 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     else { toast.success("นำออกแล้ว"); loadAll(); }
   };
 
-  const changePosition = async (memberId: string, teamId: string, position: string) => {
-    const targetMember = members.find((m) => m.id === memberId);
-    if (!targetMember) return;
-
-    if (position === "leader") {
-      // demote leader คนเดิมในทีมเดียวกันเป็น member ก่อน (ทั้ง team_members และ user_roles)
-      const currentLeaders = members.filter(
-        (m) => m.team_id === teamId && m.position === "leader" && m.id !== memberId
-      );
-      for (const leader of currentLeaders) {
-        await supabase.from("team_members").update({ position: "member" }).eq("id", leader.id);
-        // เปลี่ยน system role เป็น member
-        await supabase.from("user_roles").delete().eq("user_id", leader.user_id).eq("role", "team_leader");
-        await supabase.from("user_roles").insert({ user_id: leader.user_id, role: "member" });
-      }
-      // promote target เป็น team_leader
-      await supabase.from("user_roles").delete().eq("user_id", targetMember.user_id).eq("role", "member");
-      await supabase.from("user_roles").insert({ user_id: targetMember.user_id, role: "team_leader" });
-    } else {
-      // demote เป็น member
-      await supabase.from("user_roles").delete().eq("user_id", targetMember.user_id).eq("role", "team_leader");
-      await supabase.from("user_roles").insert({ user_id: targetMember.user_id, role: "member" });
-    }
-
+  // เปลี่ยนตำแหน่งธรรมดา (member → member ไม่มีปัญหา)
+  const changePosition = async (memberId: string, _teamId: string, position: string) => {
     const { error } = await supabase.from("team_members").update({ position }).eq("id", memberId);
     if (error) toast.error(error.message);
-    else { toast.success(position === "leader" ? "มอบอำนาจหัวหน้าทีมแล้ว" : "เปลี่ยนตำแหน่งแล้ว"); loadAll(); }
+    else { toast.success("เปลี่ยนตำแหน่งแล้ว"); loadAll(); }
+  };
+
+  // เตรียม confirm ก่อน swap leader
+  const prepareSwapLeader = (memberId: string, teamId: string) => {
+    const target = members.find((m) => m.id === memberId);
+    if (!target) return;
+    const currentLeader = members.find((m) => m.team_id === teamId && m.position === "leader");
+    const getname = (uid: string) => {
+      const p = profiles.find((p) => p.id === uid);
+      return p?.display_name || p?.email || uid;
+    };
+    setSwapTarget({
+      memberId,
+      teamId,
+      newLeaderName: getname(target.user_id),
+      oldLeaderName: currentLeader ? getname(currentLeader.user_id) : "",
+    });
+  };
+
+  // ยืนยัน swap — เรียก RPC ที่ bypass RLS
+  const confirmSwapLeader = async () => {
+    if (!swapTarget) return;
+    setSwapping(true);
+    const { error } = await (supabase as any).rpc("swap_team_leader", {
+      p_team_id: swapTarget.teamId,
+      p_new_leader_member_id: swapTarget.memberId,
+    });
+    setSwapping(false);
+    setSwapTarget(null);
+    if (error) { toast.error("สลับหัวหน้าไม่สำเร็จ: " + error.message); return; }
+    toast.success(`✅ ${swapTarget.newLeaderName} เป็นหัวหน้าทีมแล้ว`);
+    loadAll();
   };
 
   // ─── Team Detail View ──────────────────────────────────────────────────
@@ -424,7 +441,10 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                       )}
                     </div>
                     {canEdit && !(m.user_id === user?.id && m.position === "leader") ? (
-                      <Select value={m.position} onValueChange={(v) => changePosition(m.id, team.id, v)}>
+                      <Select value={m.position} onValueChange={(v) => {
+                          if (v === "leader") prepareSwapLeader(m.id, team.id);
+                          else changePosition(m.id, team.id, v);
+                        }}>
                         <SelectTrigger className={`h-7 w-28 text-[11px] border ${POSITION_STYLE[m.position] || POSITION_STYLE.member}`}>
                           <SelectValue />
                         </SelectTrigger>
@@ -848,6 +868,39 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
           open={!!viewingUserId}
           onOpenChange={(o) => { if (!o) setViewingUserId(null); }}
         />
+
+        {/* Swap leader confirmation dialog */}
+        <AlertDialog open={!!swapTarget} onOpenChange={(o) => { if (!o) setSwapTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                🔄 สลับหัวหน้าทีม
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <p>คุณต้องการสลับตำแหน่งหัวหน้าทีมใช่ไหม?</p>
+                  <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
+                    {swapTarget?.oldLeaderName && (
+                      <p>👤 <strong>{swapTarget.oldLeaderName}</strong> → <span className="text-muted-foreground">สมาชิก</span></p>
+                    )}
+                    <p>👑 <strong>{swapTarget?.newLeaderName}</strong> → <span className="text-amber-600 font-medium">หัวหน้าทีม</span></p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">การดำเนินการนี้จะเปลี่ยน role ในระบบด้วย</p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={swapping}>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                disabled={swapping}
+                onClick={confirmSwapLeader}
+              >
+                {swapping ? "กำลังสลับ..." : "ยืนยัน สลับหัวหน้า"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -1064,7 +1117,10 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                           {canEdit && !(m.user_id === user?.id && m.position === "leader") ? (
                             <Select
                               value={m.position}
-                              onValueChange={(v) => changePosition(m.id, team.id, v)}
+                              onValueChange={(v) => {
+                          if (v === "leader") prepareSwapLeader(m.id, team.id);
+                          else changePosition(m.id, team.id, v);
+                        }}
                             >
                               <SelectTrigger className={`h-6 w-28 text-[11px] border ${POSITION_STYLE[m.position] || POSITION_STYLE.member}`}>
                                 <SelectValue />
@@ -1384,6 +1440,39 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
         open={!!viewingUserId}
         onOpenChange={(o) => { if (!o) setViewingUserId(null); }}
       />
+
+      {/* Swap leader confirmation dialog (list view) */}
+      <AlertDialog open={!!swapTarget} onOpenChange={(o) => { if (!o) setSwapTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              🔄 สลับหัวหน้าทีม
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>คุณต้องการสลับตำแหน่งหัวหน้าทีมใช่ไหม?</p>
+                <div className="rounded-lg bg-muted px-4 py-3 space-y-1">
+                  {swapTarget?.oldLeaderName && (
+                    <p>👤 <strong>{swapTarget.oldLeaderName}</strong> → <span className="text-muted-foreground">สมาชิก</span></p>
+                  )}
+                  <p>👑 <strong>{swapTarget?.newLeaderName}</strong> → <span className="text-amber-600 font-medium">หัวหน้าทีม</span></p>
+                </div>
+                <p className="text-xs text-muted-foreground">การดำเนินการนี้จะเปลี่ยน role ในระบบด้วย</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={swapping}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={swapping}
+              onClick={confirmSwapLeader}
+            >
+              {swapping ? "กำลังสลับ..." : "ยืนยัน สลับหัวหน้า"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit team dialog */}
       <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditTeam(null); } }}>
