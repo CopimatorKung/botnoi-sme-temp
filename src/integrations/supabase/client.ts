@@ -2,6 +2,14 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// ดัก Discord OAuth hash ก่อน Supabase จะ clear มัน
+// (Supabase เรียก history.replaceState ล้าง hash ตอน init)
+if (typeof window !== 'undefined'
+  && window.opener
+  && window.location.hash.includes('access_token')) {
+  sessionStorage.setItem('discord_callback_hash', window.location.hash);
+}
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 

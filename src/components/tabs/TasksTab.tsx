@@ -846,12 +846,12 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
         const myTeam   = t.team_id ? myTeams.find((mt) => mt.id === t.team_id) : null;
         return (
           <Dialog open={!!selectedTask} onOpenChange={(o) => { if (!o) setSelectedTask(null); }}>
-            <DialogContent className="max-w-md" aria-describedby={undefined}>
-              <DialogHeader>
+            <DialogContent className="max-w-md flex flex-col max-h-[90vh]" aria-describedby={undefined}>
+              <DialogHeader className="shrink-0">
                 <DialogTitle className="text-base font-semibold leading-snug pr-4">{t.title}</DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-4 py-1">
+              <div className="space-y-4 py-1 overflow-y-auto flex-1 min-h-0">
                 {/* Status + team badges */}
                 <div className="flex flex-wrap gap-2 items-center">
                   {t.status === "open" && t.team_id && !t.assigned_to && !isTeamTaskExpired(t) ? (
@@ -871,7 +871,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
 
                 {/* Description */}
                 {t.description && (
-                  <div className="rounded-lg border bg-muted/30 px-3 py-3 text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                  <div className="rounded-lg border bg-muted/30 px-3 py-3 text-sm text-muted-foreground whitespace-pre-line leading-relaxed break-words">
                     {renderDescription(t.description)}
                   </div>
                 )}
@@ -910,12 +910,12 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                 {(t as any).review_note && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3">
                     <p className="text-xs font-semibold text-amber-700 mb-1">หมายเหตุ / ผลการตรวจสอบ</p>
-                    <p className="text-xs text-amber-800 whitespace-pre-line">{(t as any).review_note}</p>
+                    <p className="text-xs text-amber-800 whitespace-pre-line break-words">{(t as any).review_note}</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end pt-1">
+              <div className="flex justify-end pt-1 shrink-0">
                 <Button variant="outline" onClick={() => setSelectedTask(null)}>ปิด</Button>
               </div>
             </DialogContent>

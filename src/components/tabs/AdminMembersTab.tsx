@@ -380,21 +380,6 @@ export function AdminMembersTab() {
                 </div>
               </div>
 
-              {/* Role */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-medium">บทบาท (Role)</Label>
-                <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ALL_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Internship dates */}
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium flex items-center gap-1.5">

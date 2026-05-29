@@ -121,6 +121,8 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<ReviewTask | null>(null);
   const [rejectNote, setRejectNote] = useState("");
+  const [sendBackTarget, setSendBackTarget] = useState<ReviewTask | null>(null);
+  const [sendBackNote, setSendBackNote] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [cancelActionTarget, setCancelActionTarget] = useState<ReviewTask | null>(null);
   const [cancelActionMode, setCancelActionMode] = useState<"reject_cancel" | "accept_cancel" | null>(null);
@@ -303,18 +305,21 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
     setRejectNote("");
   };
 
-  const sendBack = async (task: ReviewTask) => {
-    setProcessing(task.id);
+  const sendBack = async () => {
+    if (!sendBackTarget || !sendBackNote.trim()) return;
+    setProcessing(sendBackTarget.id);
     const { error } = await supabase
       .from("tasks")
       .update({ status: "in_progress" } as any)
-      .eq("id", task.id);
+      .eq("id", sendBackTarget.id);
 
     setProcessing(null);
     if (error) { toast.error(error.message); return; }
-    await sendTaskNotification(task, "rejected");
+    await sendTaskNotification(sendBackTarget, "rejected", sendBackNote.trim());
     toast.success("ส่งงานกลับให้ดำเนินการต่อแล้ว");
-    setTasks((prev) => prev.filter((t) => t.id !== task.id));
+    setTasks((prev) => prev.filter((t) => t.id !== sendBackTarget.id));
+    setSendBackTarget(null);
+    setSendBackNote("");
   };
 
   // ตีกลับ = ไม่ยอมให้ยกเลิก → เปิดงานใหม่เป็น in_progress
@@ -612,7 +617,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
               variant="ghost"
               className="text-muted-foreground gap-1.5"
               disabled={isProcessing}
-              onClick={() => sendBack(task)}
+              onClick={() => { setSendBackTarget(task); setSendBackNote(""); }}
             >
               {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
               ส่งกลับดำเนินการ
@@ -971,6 +976,52 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
         userId={profileViewTarget}
         onClose={() => setProfileViewTarget(null)}
       />
+
+      {/* Send Back dialog */}
+      <Dialog open={!!sendBackTarget} onOpenChange={(o) => { if (!o) { setSendBackTarget(null); setSendBackNote(""); } }}>
+        <DialogContent aria-describedby={undefined} className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-amber-500" />
+              ส่งกลับดำเนินการ
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              งาน: <span className="font-medium text-foreground">{sendBackTarget?.title}</span>
+            </p>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              งานจะถูกส่งกลับให้สมาชิกดำเนินการต่อ
+            </p>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                ความคิดเห็น / เหตุผล <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                placeholder="เช่น ต้องการแก้ไขข้อมูลเพิ่มเติม, ลูกค้าต้องการเปลี่ยนแพ็กเกจ..."
+                value={sendBackNote}
+                onChange={(e) => setSendBackNote(e.target.value)}
+                rows={3}
+                className={!sendBackNote.trim() ? "border-red-200 focus-visible:ring-red-400" : ""}
+              />
+              {!sendBackNote.trim() && (
+                <p className="text-xs text-red-500">* กรุณาเขียนความคิดเห็นก่อน</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setSendBackTarget(null); setSendBackNote(""); }}>ยกเลิก</Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+              disabled={!sendBackNote.trim() || !!processing}
+              onClick={sendBack}
+            >
+              {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+              ส่งกลับ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject dialog */}
       <Dialog open={!!rejectTarget} onOpenChange={(o) => !o && setRejectTarget(null)}>

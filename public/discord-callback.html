@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Discord...</title>
+  <style>
+    body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background: #f9fafb; color: #6b7280; font-size: 14px; gap: 8px; }
+    .spin { width: 18px; height: 18px; border: 2px solid #c7d2fe; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="spin"></div>
+  <span>กำลังเชื่อม Discord...</span>
+  <script>
+    var hash = window.location.hash;
+    var params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+    var token = params.get('access_token');
+
+    function sendResult(data) {
+      // เขียนลง localStorage — parent รับผ่าน storage event
+      // (ทำงานได้แม้ COOP ทำให้ window.opener เป็น null)
+      localStorage.setItem('discord_auth_result', JSON.stringify(data));
+      // ลอง postMessage ด้วยเผื่อ opener ยังใช้ได้
+      try {
+        if (window.opener) {
+          window.opener.postMessage(data, window.location.origin);
+        }
+      } catch(e) {}
+      setTimeout(function() { window.close(); }, 300);
+    }
+
+    if (!token) {
+      sendResult({ type: 'discord_auth_error', error: 'no token' });
+    } else {
+      fetch('https://discord.com/api/users/@me', {
+        headers: { Authorization: 'Bearer ' + token }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        sendResult({
+          type: 'discord_auth',
+          username: data.global_name || data.username || '',
+          id: data.id
+        });
+      })
+      .catch(function() {
+        sendResult({ type: 'discord_auth_error', error: 'api failed' });
+      });
+    }
+  </script>
+</body>
+</html>

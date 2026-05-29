@@ -309,7 +309,8 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     const memberUserIds = new Set(teamMembers.map((m) => m.user_id));
     const soloTasks = tasks.filter((t) => !t.team_id && t.assigned_to && memberUserIds.has(t.assigned_to));
     const isCreator = team.created_by === user?.id;
-    const canEdit = canManage && (isCreator || role === "admin" || role === "ceo" || role === "developer");
+    const isLeaderOf = teamMembers.some((m) => m.user_id === user?.id && m.position === "leader");
+    const canEdit = canManage && (isCreator || isLeaderOf || role === "admin" || role === "ceo" || role === "developer");
 
     const statusIcon = (s: string) => {
       if (s === "in_progress") return <Clock className="w-3 h-3 text-yellow-500" />;
@@ -940,7 +941,8 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
           const activeTasks = teamTasks.filter((t) => t.status === "in_progress");
           const isExpanded = expandedId === team.id;
           const isCreator = team.created_by === user?.id;
-          const canEdit = canManage && (isCreator || role === "admin" || role === "ceo" || role === "developer");
+          const isLeaderOf = teamMembers.some((m) => m.user_id === user?.id && m.position === "leader");
+          const canEdit = canManage && (isCreator || isLeaderOf || role === "admin" || role === "ceo" || role === "developer");
           const availableProfiles = profiles.filter((p) => {
             if (teamMembers.some((m) => m.user_id === p.id)) return false;
             // Team Leader เพิ่มได้แค่ user ที่มี system role "member"
