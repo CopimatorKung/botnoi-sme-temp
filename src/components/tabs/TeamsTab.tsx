@@ -260,16 +260,15 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
   };
 
   const removeMember = async (memberId: string) => {
-    // ป้องกันหัวหน้าทีมเตะตัวเองออกก่อนโอนตำแหน่งหัวหน้าให้คนอื่น
+    // ห้ามลบหัวหน้าทีมออกตรงๆ ไม่ว่าใครก็ตาม (รวม admin/ceo/developer)
+    // ต้องโอนตำแหน่งหัวหน้าให้คนอื่นก่อน
     const { data: memberRow } = await supabase
       .from("team_members" as any)
-      .select("user_id, position")
+      .select("position")
       .eq("id", memberId)
       .single();
-    if (memberRow
-        && (memberRow as any).user_id === user?.id
-        && (memberRow as any).position === "leader") {
-      toast.error("กรุณาตั้งหัวหน้าทีมคนใหม่ก่อน จึงจะออกจากทีมได้");
+    if (memberRow && (memberRow as any).position === "leader") {
+      toast.error("กรุณาตั้งหัวหน้าทีมคนใหม่ก่อน จึงจะนำหัวหน้าออกจากทีมได้");
       return;
     }
 
