@@ -270,11 +270,11 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     const { error } = await supabase.from("team_members").delete().eq("id", memberId);
     if (error) { toast.error(error.message); return; }
 
-    // งานที่คนนั้นกำลังทำอยู่ในทีม → คืนกลับให้ทีม (ยังอยู่ใน team แต่ไม่มีผู้รับ)
+    // งาน in_progress → เคลียร์แค่ assigned_to ออก แต่คง status ไว้ (ยังอยู่ "รับแล้ว" ในทีม)
     if (memberRow) {
       await supabase
         .from("tasks")
-        .update({ assigned_to: null, status: "open" } as any)
+        .update({ assigned_to: null } as any)
         .eq("team_id", (memberRow as any).team_id)
         .eq("assigned_to", (memberRow as any).user_id)
         .eq("status", "in_progress");

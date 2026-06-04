@@ -355,7 +355,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
       if (!t.team_id || !myTeamIds.has(t.team_id)) return false;
       if (isTeamTaskExpired(t)) return false;
       if (teamSubFilter === "waiting") return t.status === "open" && !t.assigned_to;
-      if (teamSubFilter === "claimed") return !!t.assigned_to && t.status === "in_progress";
+      if (teamSubFilter === "claimed") return t.status === "in_progress"; // รวมถึง in_progress ที่ไม่มีคนรับ (สมาชิกออกจากทีม)
       if (teamSubFilter === "done") return !!t.assigned_to && (t.status === "done" || (t.status as string) === "approved");
     }
     if (filter === "approved") return (t.status as string) === "approved";
