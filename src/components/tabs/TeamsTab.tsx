@@ -270,17 +270,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     const { error } = await supabase.from("team_members").delete().eq("id", memberId);
     if (error) { toast.error(error.message); return; }
 
-    // คืนงานที่ยังค้างอยู่ในทีมนั้นกลับเป็น open (ไม่มีผู้รับ)
-    if (memberRow) {
-      await supabase
-        .from("tasks")
-        .update({ assigned_to: null, status: "open" } as any)
-        .eq("team_id", (memberRow as any).team_id)
-        .eq("assigned_to", (memberRow as any).user_id)
-        .in("status", ["in_progress", "open"]);
-    }
-
-    toast.success("นำออกแล้ว และคืนงานกลับสู่บอร์ดทีม");
+    toast.success("นำออกแล้ว");
     loadAll();
   };
 
