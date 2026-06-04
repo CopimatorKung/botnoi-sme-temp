@@ -320,7 +320,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
     }
   };
 
-  const THREE_HOURS_MS = 1 * 60 * 1000; // TEST: 1 นาที (ปกติ 3 * 60 * 60 * 1000)
+  const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
   const myTeamIds = new Set(myTeams.map((t) => t.id));
 
   const isTeamTaskExpired = (t: Task) =>
