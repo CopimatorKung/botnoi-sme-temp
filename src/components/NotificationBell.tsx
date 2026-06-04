@@ -179,12 +179,12 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
               >
                 <div className="shrink-0 mt-0.5">
                   {n.type === "approved"
-                    ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    ? <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
                     : n.type === "assigned"
-                    ? <ClipboardList className="w-4 h-4 text-blue-500" />
+                    ? <ClipboardList className="w-4 h-4 text-muted-foreground" />
                     : n.type === "new_task"
-                    ? <BellRing className="w-4 h-4 text-orange-500" />
-                    : <XCircle className="w-4 h-4 text-red-500" />}
+                    ? <BellRing className="w-4 h-4 text-muted-foreground" />
+                    : <XCircle className="w-4 h-4 text-muted-foreground" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-snug">{n.message}</p>
