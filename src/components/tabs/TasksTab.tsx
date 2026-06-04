@@ -427,7 +427,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
               className="relative"
             >
               {label}
-              {tabCounts[key] > 0 && (
+              {tabCounts[key] > 0 && filter !== key && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-0.5">
                   {tabCounts[key] > 99 ? "99+" : tabCounts[key]}
                 </span>
