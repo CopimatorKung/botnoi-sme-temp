@@ -63,6 +63,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
   const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | "team" | "approved" | Status>("team");
+  const [now, setNow] = useState(Date.now());
   const [seenCounts, setSeenCounts] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem("task_tab_seen") ?? "{}"); } catch { return {}; }
   });
@@ -105,6 +106,12 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => loadTasks())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
+  }, []);
+
+  // tick ทุกวินาทีสำหรับเวลานับถอยหลังของงานทีม
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
   }, []);
 
   // เปิด dialog งานเมื่อมาจากการกดแจ้งเตือน
@@ -332,6 +339,16 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
     !t.assigned_to &&
     Date.now() - new Date(t.created_at).getTime() > THREE_HOURS_MS;
 
+  // เวลานับถอยหลังก่อนงานทีมหมดเวลา (HH:MM:SS) — null ถ้าหมดแล้ว
+  const teamTaskCountdown = (t: Task): string | null => {
+    const remaining = new Date(t.created_at).getTime() + THREE_HOURS_MS - now;
+    if (remaining <= 0) return null;
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
   const tabCounts = {
     all:         tasks.filter((t) => !(t.team_id && t.status === "open" && !t.assigned_to && !isTeamTaskExpired(t))).length,
     mine:        tasks.filter((t) => t.assigned_to === user?.id && (!t.team_id || myTeamIds.has(t.team_id))).length,
@@ -498,7 +515,14 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                     <h3 className="font-semibold">{t.title}</h3>
                     {/* รอรับงาน = open + ทีม + ยังไม่หมดเวลา, งานอิสระ = open + ไม่มีทีม หรือหมดเวลาแล้ว */}
                     {t.status === "open" && t.team_id && !t.assigned_to && !isTeamTaskExpired(t) ? (
-                      <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">รอรับงาน</Badge>
+                      <>
+                        <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">รอรับงาน</Badge>
+                        {teamTaskCountdown(t) && (
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 font-mono tabular-nums">
+                            ⏳ {teamTaskCountdown(t)}
+                          </Badge>
+                        )}
+                      </>
                     ) : (
                       <Badge className={statusColor[t.status]}>{statusLabel[t.status]}</Badge>
                     )}
@@ -879,7 +903,14 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                 {/* Status + team badges */}
                 <div className="flex flex-wrap gap-2 items-center">
                   {t.status === "open" && t.team_id && !t.assigned_to && !isTeamTaskExpired(t) ? (
-                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">รอรับงาน</Badge>
+                    <>
+                      <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">รอรับงาน</Badge>
+                      {teamTaskCountdown(t) && (
+                        <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 font-mono tabular-nums">
+                          ⏳ {teamTaskCountdown(t)}
+                        </Badge>
+                      )}
+                    </>
                   ) : (
                     <Badge className={statusColor[t.status]}>{statusLabel[t.status]}</Badge>
                   )}
