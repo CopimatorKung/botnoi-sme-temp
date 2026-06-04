@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Bell, Check, X, CheckCircle2, XCircle } from "lucide-react";
+import { Bell, Check, X, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
 
 interface Invitation {
   id: string;
@@ -18,7 +18,7 @@ interface Invitation {
 
 interface TaskNotification {
   id: string;
-  type: "approved" | "rejected";
+  type: "approved" | "rejected" | "assigned";
   task_id: string | null;
   message: string;
   is_read: boolean;
@@ -97,7 +97,7 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
       .from("notifications" as any)
       .select("id,type,task_id,message,is_read,created_at")
       .eq("user_id", user.id)
-      .in("type", ["approved", "rejected"])
+      .in("type", ["approved", "rejected", "assigned"])
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -180,6 +180,8 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
                 <div className="shrink-0 mt-0.5">
                   {n.type === "approved"
                     ? <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    : n.type === "assigned"
+                    ? <ClipboardList className="w-4 h-4 text-blue-500" />
                     : <XCircle className="w-4 h-4 text-red-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
