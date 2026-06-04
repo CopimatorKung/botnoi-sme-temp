@@ -527,7 +527,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                     <Badge variant="outline" className="text-slate-500">ยังไม่มีคนรับ</Badge>
                   )}
                   <div className="flex gap-2 flex-wrap justify-end">
-                    {!t.assigned_to && (
+                    {!t.assigned_to && t.status === "open" && (
                       <Button
                         size="sm"
                         variant="outline"
