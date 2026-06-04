@@ -260,28 +260,10 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
   };
 
   const removeMember = async (memberId: string) => {
-    // ดึง user_id และ team_id ก่อน
-    const { data: memberRow } = await supabase
-      .from("team_members" as any)
-      .select("user_id, team_id")
-      .eq("id", memberId)
-      .single();
-
+    // งานที่คนนั้นรับไว้จะคงอยู่เหมือนเดิม (assignee + สถานะไม่เปลี่ยน)
     const { error } = await supabase.from("team_members").delete().eq("id", memberId);
-    if (error) { toast.error(error.message); return; }
-
-    // งาน in_progress → เคลียร์แค่ assigned_to ออก แต่คง status ไว้ (ยังอยู่ "รับแล้ว" ในทีม)
-    if (memberRow) {
-      await supabase
-        .from("tasks")
-        .update({ assigned_to: null } as any)
-        .eq("team_id", (memberRow as any).team_id)
-        .eq("assigned_to", (memberRow as any).user_id)
-        .eq("status", "in_progress");
-    }
-
-    toast.success("นำออกแล้ว งานถูกคืนกลับให้ทีม");
-    loadAll();
+    if (error) toast.error(error.message);
+    else { toast.success("นำออกแล้ว"); loadAll(); }
   };
 
   // เปลี่ยนตำแหน่งธรรมดา (member → member ไม่มีปัญหา)

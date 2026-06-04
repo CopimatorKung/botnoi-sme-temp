@@ -355,7 +355,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
       if (!t.team_id || !myTeamIds.has(t.team_id)) return false;
       if (isTeamTaskExpired(t)) return false;
       if (teamSubFilter === "waiting") return t.status === "open" && !t.assigned_to;
-      if (teamSubFilter === "claimed") return t.status === "in_progress"; // รวมถึง in_progress ที่ไม่มีคนรับ (สมาชิกออกจากทีม)
+      if (teamSubFilter === "claimed") return !!t.assigned_to && t.status === "in_progress";
       if (teamSubFilter === "done") return !!t.assigned_to && (t.status === "done" || (t.status as string) === "approved");
     }
     if (filter === "approved") return (t.status as string) === "approved";
@@ -535,19 +535,6 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                         onClick={() => { setClaimingTaskId(t.id); setClaimWorkType("solo"); }}
                       >
                         รับงาน
-                      </Button>
-                    )}
-                    {!t.assigned_to && t.status === "in_progress" && isMyTeamTask && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
-                        onClick={async () => {
-                          await supabase.from("tasks").update({ assigned_to: user!.id } as any).eq("id", t.id);
-                          loadTasks();
-                        }}
-                      >
-                        รับต่อ
                       </Button>
                     )}
                     {(isMine || isMyTeamTask) && !!t.assigned_to && (
