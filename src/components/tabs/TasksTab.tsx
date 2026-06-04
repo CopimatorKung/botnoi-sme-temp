@@ -334,7 +334,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
 
   const tabCounts = {
     all:         tasks.filter((t) => !(t.team_id && t.status === "open" && !t.assigned_to && !isTeamTaskExpired(t))).length,
-    mine:        tasks.filter((t) => t.assigned_to === user?.id).length,
+    mine:        tasks.filter((t) => t.assigned_to === user?.id && (!t.team_id || myTeamIds.has(t.team_id))).length,
     unassigned:  tasks.filter((t) => !t.assigned_to && (!t.team_id || isTeamTaskExpired(t))).length,
     team:        tasks.filter((t) => t.team_id && myTeamIds.has(t.team_id) && !isTeamTaskExpired(t)).length,
     in_progress: tasks.filter((t) => t.status === "in_progress").length,
@@ -348,7 +348,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
       if (t.team_id && t.status === "open" && !t.assigned_to && !isTeamTaskExpired(t)) return false;
       return true;
     }
-    if (filter === "mine") return t.assigned_to === user?.id;
+    if (filter === "mine") return t.assigned_to === user?.id && (!t.team_id || myTeamIds.has(t.team_id));
     if (filter === "unassigned") return !t.assigned_to && (!t.team_id || isTeamTaskExpired(t));
     if (filter === "team") {
       // เฉพาะทีมของตัวเอง และยังไม่หมดเวลา 3 ชม.
