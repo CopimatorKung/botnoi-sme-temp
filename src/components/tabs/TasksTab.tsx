@@ -62,7 +62,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
-  const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | "team" | "approved" | Status>("all");
+  const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | "team" | "approved" | Status>("team");
   const [teamSubFilter, setTeamSubFilter] = useState<"waiting" | "claimed" | "done">("waiting");
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const [claimWorkType, setClaimWorkType] = useState<"solo" | "team">("solo");
@@ -412,10 +412,9 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex flex-wrap gap-2">
           {([
-            { key: "all",         label: "ทั้งหมด" },
+            { key: "team",        label: "งานของทีม" },
             { key: "mine",        label: "ของฉัน" },
             { key: "unassigned",  label: "ยังไม่มีคนรับ" },
-            { key: "team",        label: "งานของทีม" },
             { key: "in_progress", label: "กำลังทำ" },
             { key: "done",        label: "รอตรวจสอบ" },
             { key: "approved",    label: "เสร็จแล้ว" },
