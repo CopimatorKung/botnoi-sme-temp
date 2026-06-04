@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -150,6 +150,7 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
         style={{ maxHeight: "90vh" }}
         aria-describedby={undefined}
       >
+        <DialogTitle className="sr-only">โปรไฟล์สมาชิก</DialogTitle>
         {/* Banner + Avatar */}
         <div className="relative shrink-0">
           <div
