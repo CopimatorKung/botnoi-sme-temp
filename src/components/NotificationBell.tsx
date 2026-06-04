@@ -133,11 +133,19 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-          <Bell className="w-5 h-5 text-muted-foreground" />
+          <Bell className={`w-5 h-5 transition-colors ${totalUnread > 0 ? "text-foreground" : "text-muted-foreground"}`} />
           {totalUnread > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-              {totalUnread > 9 ? "9+" : totalUnread}
-            </span>
+            <>
+              {/* ping animation */}
+              <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              {/* จำนวน */}
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-0.5">
+                {totalUnread > 9 ? "9+" : totalUnread}
+              </span>
+            </>
           )}
         </button>
       </PopoverTrigger>
