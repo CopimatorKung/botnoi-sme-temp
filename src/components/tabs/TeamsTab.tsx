@@ -238,9 +238,16 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
   };
 
   const deleteTeam = async (teamId: string) => {
+    // งานที่อยู่ระหว่าง open/in_progress ในทีมนี้ → ปล่อยเป็นงานอิสระ (ทุกคนรับได้)
+    await supabase
+      .from("tasks")
+      .update({ team_id: null, assigned_to: null, status: "open" } as any)
+      .eq("team_id", teamId)
+      .in("status", ["open", "in_progress"]);
+
     const { error } = await supabase.from("teams").delete().eq("id", teamId);
     if (error) toast.error(error.message);
-    else { toast.success("ลบทีมแล้ว"); loadAll(); }
+    else { toast.success("ลบทีมแล้ว งานที่ค้างอยู่ถูกคืนสู่บอร์ดกลาง"); loadAll(); }
   };
 
   const addMember = async (teamId: string) => {
