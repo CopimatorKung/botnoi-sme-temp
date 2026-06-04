@@ -537,6 +537,19 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                         รับงาน
                       </Button>
                     )}
+                    {!t.assigned_to && t.status === "in_progress" && isMyTeamTask && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
+                        onClick={async () => {
+                          await supabase.from("tasks").update({ assigned_to: user!.id } as any).eq("id", t.id);
+                          loadTasks();
+                        }}
+                      >
+                        รับต่อ
+                      </Button>
+                    )}
                     {(isMine || isMyTeamTask) && !!t.assigned_to && (
                       <div className="flex items-center gap-1.5">
                         {(t.status === "done" || (t.status as string) === "approved" || t.status === "cancelled") ? (
