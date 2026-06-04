@@ -278,8 +278,20 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     else { toast.success("นำออกแล้ว"); loadAll(); }
   };
 
-  // เปลี่ยนตำแหน่งธรรมดา (member → member ไม่มีปัญหา)
-  const changePosition = async (memberId: string, _teamId: string, position: string) => {
+  // เปลี่ยนตำแหน่ง — ห้ามปลดหัวหน้าเป็นสมาชิกถ้าไม่มีหัวหน้าคนอื่น
+  const changePosition = async (memberId: string, teamId: string, position: string) => {
+    if (position !== "leader") {
+      const target = members.find((m) => m.id === memberId);
+      if (target?.position === "leader") {
+        const otherLeaders = members.filter(
+          (m) => m.team_id === teamId && m.position === "leader" && m.id !== memberId
+        );
+        if (otherLeaders.length === 0) {
+          toast.error("ต้องมีหัวหน้าทีมอย่างน้อย 1 คน — กรุณาตั้งหัวหน้าใหม่ก่อน");
+          return;
+        }
+      }
+    }
     const { error } = await supabase.from("team_members").update({ position }).eq("id", memberId);
     if (error) toast.error(error.message);
     else { toast.success("เปลี่ยนตำแหน่งแล้ว"); loadAll(); }
