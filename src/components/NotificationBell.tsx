@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Bell, Check, X, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
+import { Bell, Check, X, CheckCircle2, XCircle, ClipboardList, BellRing } from "lucide-react";
 
 interface Invitation {
   id: string;
@@ -18,7 +18,7 @@ interface Invitation {
 
 interface TaskNotification {
   id: string;
-  type: "approved" | "rejected" | "assigned";
+  type: "approved" | "rejected" | "assigned" | "new_task";
   task_id: string | null;
   message: string;
   is_read: boolean;
@@ -97,7 +97,7 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
       .from("notifications" as any)
       .select("id,type,task_id,message,is_read,created_at")
       .eq("user_id", user.id)
-      .in("type", ["approved", "rejected", "assigned"])
+      .in("type", ["approved", "rejected", "assigned", "new_task"])
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -182,6 +182,8 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
                     ? <CheckCircle2 className="w-4 h-4 text-green-500" />
                     : n.type === "assigned"
                     ? <ClipboardList className="w-4 h-4 text-blue-500" />
+                    : n.type === "new_task"
+                    ? <BellRing className="w-4 h-4 text-orange-500" />
                     : <XCircle className="w-4 h-4 text-red-500" />}
                 </div>
                 <div className="flex-1 min-w-0">
