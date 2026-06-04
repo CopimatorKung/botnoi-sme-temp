@@ -63,6 +63,9 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
   const [filter, setFilter] = useState<"all" | "mine" | "unassigned" | "team" | "approved" | Status>("team");
+  const [seenCounts, setSeenCounts] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem("task_tab_seen") ?? "{}"); } catch { return {}; }
+  });
   const [teamSubFilter, setTeamSubFilter] = useState<"waiting" | "claimed" | "done">("waiting");
   const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const [claimWorkType, setClaimWorkType] = useState<"solo" | "team">("solo");
@@ -423,13 +426,19 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
               key={key}
               size="sm"
               variant={filter === key ? "default" : "outline"}
-              onClick={() => { setFilter(key as any); if (key === "team") setTeamSubFilter("waiting"); }}
+              onClick={() => {
+                setFilter(key as any);
+                if (key === "team") setTeamSubFilter("waiting");
+                const updated = { ...seenCounts, [key]: tabCounts[key] };
+                setSeenCounts(updated);
+                localStorage.setItem("task_tab_seen", JSON.stringify(updated));
+              }}
               className="relative"
             >
               {label}
-              {tabCounts[key] > 0 && filter !== key && (
+              {tabCounts[key] > (seenCounts[key] ?? 0) && filter !== key && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-0.5">
-                  {tabCounts[key] > 99 ? "99+" : tabCounts[key]}
+                  {(tabCounts[key] - (seenCounts[key] ?? 0)) > 99 ? "99+" : tabCounts[key] - (seenCounts[key] ?? 0)}
                 </span>
               )}
             </Button>
