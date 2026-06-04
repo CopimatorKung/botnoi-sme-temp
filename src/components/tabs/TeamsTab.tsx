@@ -105,6 +105,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     newLeaderName: string; oldLeaderName: string;
   } | null>(null);
   const [swapping, setSwapping] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{ memberId: string; name: string; teamName: string } | null>(null);
   const [teamDoneTasks, setTeamDoneTasks] = useState<TaskSummary[]>([]);
   const [chartPeriod, setChartPeriod] = useState<"7d" | "1m" | "3m" | "6m" | "1y" | "custom">("1m");
   const [chartFrom, setChartFrom] = useState("");
@@ -277,6 +278,47 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     if (error) toast.error(error.message);
     else { toast.success("นำออกแล้ว"); loadAll(); }
   };
+
+  // ชื่อสมาชิกจาก profiles
+  const getMemberName = (m: TeamMember) => {
+    const p = profiles.find((p) => p.id === m.user_id);
+    return p?.display_name || p?.email || m.user_id;
+  };
+
+  // เปิด dialog ยืนยันก่อนนำสมาชิกออก (หัวหน้าทีมเตือนทันทีไม่เปิด dialog)
+  const askRemoveMember = (m: TeamMember, teamName: string) => {
+    if (m.position === "leader") {
+      toast.error("กรุณาตั้งหัวหน้าทีมคนใหม่ก่อน จึงจะนำหัวหน้าออกจากทีมได้");
+      return;
+    }
+    setRemoveTarget({ memberId: m.id, name: getMemberName(m), teamName });
+  };
+
+  const removeMemberDialog = (
+    <AlertDialog open={!!removeTarget} onOpenChange={(o) => { if (!o) setRemoveTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>นำสมาชิกออกจากทีม</AlertDialogTitle>
+          <AlertDialogDescription>
+            ต้องการนำ <strong>{removeTarget?.name}</strong> ออกจากทีม <strong>{removeTarget?.teamName}</strong> ใช่ไหม?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700 text-white"
+            onClick={async () => {
+              if (!removeTarget) return;
+              await removeMember(removeTarget.memberId);
+              setRemoveTarget(null);
+            }}
+          >
+            นำออก
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   // เปลี่ยนตำแหน่ง — ห้ามปลดหัวหน้าเป็นสมาชิกถ้าไม่มีหัวหน้าคนอื่น
   const changePosition = async (memberId: string, teamId: string, position: string) => {
@@ -495,7 +537,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                     )}
                     {canEdit && !(m.user_id === user?.id && m.position === "leader") && (
                       <button
-                        onClick={() => removeMember(m.id)}
+                        onClick={() => askRemoveMember(m, team.name)}
                         className="text-muted-foreground hover:text-red-500 transition-colors shrink-0 p-1"
                         title="นำออกจากทีม"
                       >
@@ -934,6 +976,8 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {removeMemberDialog}
       </div>
     );
   }
@@ -1173,7 +1217,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                           )}
                           {canEdit && (
                             <button
-                              onClick={() => removeMember(m.id)}
+                              onClick={() => askRemoveMember(m, team.name)}
                               className="text-muted-foreground hover:text-red-500 transition-colors shrink-0"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -1662,6 +1706,8 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {removeMemberDialog}
     </div>
   );
 }
