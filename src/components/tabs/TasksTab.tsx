@@ -329,6 +329,16 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
     !t.assigned_to &&
     Date.now() - new Date(t.created_at).getTime() > THREE_HOURS_MS;
 
+  const tabCounts = {
+    all:         tasks.filter((t) => !(t.team_id && t.status === "open" && !t.assigned_to && !isTeamTaskExpired(t))).length,
+    mine:        tasks.filter((t) => t.assigned_to === user?.id).length,
+    unassigned:  tasks.filter((t) => !t.assigned_to && (!t.team_id || isTeamTaskExpired(t))).length,
+    team:        tasks.filter((t) => t.team_id && myTeamIds.has(t.team_id) && !isTeamTaskExpired(t)).length,
+    in_progress: tasks.filter((t) => t.status === "in_progress").length,
+    done:        tasks.filter((t) => t.status === "done").length,
+    approved:    tasks.filter((t) => (t.status as string) === "approved").length,
+  };
+
   const filtered = tasks.filter((t) => {
     if (filter === "all") {
       // แสดงงานที่ไม่มีทีม + งานทีมที่หมดเวลา 3 ชม. แล้ว + งานที่รับแล้ว
@@ -415,8 +425,14 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
               size="sm"
               variant={filter === key ? "default" : "outline"}
               onClick={() => { setFilter(key as any); if (key === "team") setTeamSubFilter("waiting"); }}
+              className="relative"
             >
               {label}
+              {tabCounts[key] > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none px-0.5">
+                  {tabCounts[key] > 99 ? "99+" : tabCounts[key]}
+                </span>
+              )}
             </Button>
           ))}
         </div>
