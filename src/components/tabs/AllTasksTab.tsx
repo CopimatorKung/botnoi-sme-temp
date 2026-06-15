@@ -81,10 +81,10 @@ const SORT_OPTIONS: { value: SortKey; label: string; group: string }[] = [
   { value: "status_active", label: "กำลังดำเนินการ",   group: "สถานะ"  },
   { value: "status_done",   label: "เสร็จแล้ว",        group: "สถานะ"  },
   { value: "wait_first",    label: "รอรับงาน",          group: "สถานะ"  },
-  { value: "assignee_az",   label: "A → Z",            group: "ผู้รับงาน" },
-  { value: "assignee_za",   label: "Z → A",            group: "ผู้รับงาน" },
-  { value: "title_az",      label: "A → Z",            group: "ชื่องาน"   },
-  { value: "title_za",      label: "Z → A",            group: "ชื่องาน"   },
+  { value: "assignee_az",   label: "ผู้รับงาน A → Z",   group: "ตัวอักษร" },
+  { value: "assignee_za",   label: "ผู้รับงาน Z → A",   group: "ตัวอักษร" },
+  { value: "title_az",      label: "ชื่องาน A → Z",      group: "ตัวอักษร" },
+  { value: "title_za",      label: "ชื่องาน Z → A",      group: "ตัวอักษร" },
 ];
 
 const matchStatusFilter = (t: Task, key: FilterKey): boolean => {
@@ -592,7 +592,7 @@ export function AllTasksTab() {
                   </PopoverTrigger>
                   <PopoverContent className="w-52 p-2" align="start">
                     <RadioGroup value={sortKey} onValueChange={(v) => { changeSort(v as SortKey); setSortPopoverOpen(false); }}>
-                      {["วันที่สร้าง", "วันครบกำหนด", "ความสำคัญ", "สถานะ", "ผู้รับงาน", "ชื่องาน"].map((group) => {
+                      {["วันที่สร้าง", "วันครบกำหนด", "ความสำคัญ", "สถานะ", "ตัวอักษร"].map((group) => {
                         const opts = SORT_OPTIONS.filter((o) => o.group === group);
                         if (!opts.length) return null;
                         return (
@@ -772,22 +772,18 @@ export function AllTasksTab() {
               </div>
 
             </div>
-            {advancedActive && (
-              <div className="mt-2.5 flex items-center justify-between">
-                <span className="text-xs text-gray-400">กรองอยู่ {[smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length} เงื่อนไข</span>
-                <button onClick={resetAdvanced} className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors">
-                  <X className="w-3 h-3" /> ล้างตัวกรอง
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
 
-      {/* Result summary */}
+      {/* Result summary — single row */}
       <div className="flex items-center justify-between px-0.5">
         <p className="text-xs text-gray-400">
           {anyFilterActive ? `แสดง ${sorted.length} จาก ${tasks.length} รายการ` : `${tasks.length} รายการทั้งหมด`}
+          {advancedActive && (() => {
+            const n = [smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length;
+            return n > 0 ? <span className="ml-1.5 text-gray-300">• กรอง {n} เงื่อนไข</span> : null;
+          })()}
         </p>
         {anyFilterActive && (
           <button onClick={() => { changeStatus(null); changeSearch(""); resetAdvanced(); }}
@@ -1071,10 +1067,7 @@ function PaginationBar({ currentPage, totalPages, fromEntry, toEntry, total, onC
     pages.push(totalPages);
   }
   return (
-    <div className="flex items-center justify-between gap-4 px-1">
-      <p className="text-xs text-gray-500">
-        แสดง <span className="font-semibold text-gray-900">{fromEntry}–{toEntry}</span> จาก <span className="font-semibold text-gray-900">{total}</span> รายการ
-      </p>
+    <div className="flex items-center justify-end gap-4 px-1">
       <div className="flex items-center gap-1">
         <button onClick={() => onChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
           className="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-400 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
