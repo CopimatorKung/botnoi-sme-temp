@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -437,7 +437,7 @@ export function AdminMembersTab() {
                     "flex items-center gap-2 text-sm rounded-lg px-3 py-2",
                     d < 0 ? "bg-red-50 text-red-600 border border-red-200"
                     : d <= 7 ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
                   )}>
                     {d < 0
                       ? <><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> หมดแล้ว {Math.abs(d)} วัน</>
@@ -522,7 +522,7 @@ function MemberCard({
         </span>
       );
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
         <CheckCircle2 className="w-3 h-3" />
         เหลือ {days} วัน
       </span>

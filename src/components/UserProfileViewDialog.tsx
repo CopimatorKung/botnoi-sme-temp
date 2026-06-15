@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Loader2, ShieldCheck, Briefcase, CheckCircle2, Clock,
   Users, Link as LinkIcon, BarChart3, CalendarDays,
+  Flag, CalendarClock, UserPlus, Wrench, ClipboardCheck, BadgeCheck,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -39,6 +40,27 @@ const TYPE_COLORS: Record<string, string> = {
 };
 const BANNER_STORAGE_KEY = "profile_banner_color";
 
+type TaskPriority = "urgent" | "high" | "normal";
+const PRIORITY_CFG: Record<TaskPriority, { label: string; color: string; dot: string }> = {
+  urgent: { label: "ด่วนมาก", color: "bg-red-50 text-red-600 border-red-200",         dot: "bg-red-500"    },
+  high:   { label: "ด่วน",    color: "bg-orange-50 text-orange-600 border-orange-200", dot: "bg-orange-400" },
+  normal: { label: "ปกติ",    color: "bg-gray-50 text-gray-500 border-gray-200",       dot: "bg-gray-300"   },
+};
+const TIMELINE_STEPS = [
+  { key: "created",     label: "สร้างงาน",  Icon: Clock          },
+  { key: "assigned",    label: "รับงาน",     Icon: UserPlus       },
+  { key: "in_progress", label: "กำลังทำ",    Icon: Wrench         },
+  { key: "done",        label: "รอตรวจ",     Icon: ClipboardCheck },
+  { key: "approved",    label: "ผ่านแล้ว",   Icon: BadgeCheck     },
+];
+function getTimelineIdx(status: string, assigned: boolean): number {
+  if (status === "approved")    return 4;
+  if (status === "done")        return 3;
+  if (status === "in_progress") return 2;
+  if (status === "open" && assigned) return 1;
+  return 0;
+}
+
 interface UserProfile {
   id: string; display_name: string | null; email: string | null;
   avatar_url: string | null; bio: string | null;
@@ -47,7 +69,12 @@ interface UserProfile {
   discord_name: string | null;
 }
 interface MyTeam { team_id: string; team_name: string; position: string; team_logo_url?: string | null; }
-interface MyTask { id: string; title: string; status: string; review_note?: string | null; created_at: string; }
+interface MyTask {
+  id: string; title: string; status: string; review_note?: string | null; created_at: string;
+  due_date?: string | null; created_by?: string | null; priority?: TaskPriority;
+  assigned_to?: string | null;
+}
+interface CreatorProfile { id: string; display_name: string | null; email: string | null; avatar_url: string | null; }
 
 function parseWorkType(note?: string | null) {
   if (!note) return { workType: null, workUrl: null };
@@ -65,10 +92,10 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
   const [profile, setProfile]   = useState<UserProfile | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [myTeams, setMyTeams]   = useState<MyTeam[]>([]);
-  const [myTasks, setMyTasks]   = useState<MyTask[]>([]);
-  const [loading, setLoading]   = useState(false);
+  const [myTasks, setMyTasks]       = useState<MyTask[]>([]);
+  const [creatorsMap, setCreatorsMap] = useState<Record<string, CreatorProfile>>({});
+  const [loading, setLoading]       = useState(false);
   const [chartPeriod, setChartPeriod] = useState<"7d"|"1m"|"3m"|"6m"|"1y">("1m");
-  const [copiedDiscord, setCopiedDiscord] = useState(false);
 
   // banner color — ใช้สีจาก localStorage ของ user คนนั้น (ถ้าไม่มี ใช้ค่า default)
   const bannerColor = BANNER_COLORS[0];
@@ -83,7 +110,7 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
       supabase.from("user_roles" as any).select("role").eq("user_id", userId),
       supabase.from("team_members" as any).select("team_id, position").eq("user_id", userId),
       supabase.from("tasks")
-        .select("id, title, status, review_note, created_at")
+        .select("id, title, status, review_note, created_at, due_date, created_by, priority, assigned_to")
         .eq("assigned_to", userId).not("status", "eq", "cancelled")
         .order("created_at", { ascending: false }),
     ]).then(async ([{ data: prof }, { data: roles }, { data: memberships }, { data: tasks }]) => {
@@ -108,14 +135,25 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
       } else {
         setMyTeams([]);
       }
-      setMyTasks((tasks as MyTask[]) ?? []);
+      const taskList = (tasks as MyTask[]) ?? [];
+      setMyTasks(taskList);
+
+      // fetch creator profiles for all unique created_by IDs
+      const creatorIds = [...new Set(taskList.map((t) => t.created_by).filter(Boolean))] as string[];
+      if (creatorIds.length > 0) {
+        const { data: cProfs } = await supabase.from("profiles").select("id, display_name, email, avatar_url").in("id", creatorIds);
+        if (cProfs) {
+          setCreatorsMap(Object.fromEntries((cProfs as CreatorProfile[]).map((p) => [p.id, p])));
+        }
+      }
+
       setLoading(false);
     });
   }, [open, userId]);
 
   // reset on close
   useEffect(() => {
-    if (!open) { setProfile(null); setUserRole(null); setMyTeams([]); setMyTasks([]); }
+    if (!open) { setProfile(null); setUserRole(null); setMyTeams([]); setMyTasks([]); setCreatorsMap({}); }
   }, [open]);
 
   const activeTasks   = myTasks.filter((t) => t.status === "in_progress");
@@ -160,7 +198,7 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
           <div className="absolute inset-x-0 bottom-0 translate-y-1/2 flex justify-center">
             <Avatar className="w-20 h-20 border-4 border-background shadow-md">
               <AvatarImage src={profile?.avatar_url ?? undefined} className="object-cover" />
-              <AvatarFallback className="text-2xl font-bold bg-emerald-100 text-emerald-700">
+              <AvatarFallback className="text-2xl font-bold bg-blue-100 text-blue-700">
                 {profile?.display_name?.[0]?.toUpperCase() ?? initials}
               </AvatarFallback>
             </Avatar>
@@ -175,23 +213,6 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
           <div className="flex items-center justify-center gap-2 mt-0.5 flex-wrap">
             {profile?.email && (
               <p className="text-xs text-muted-foreground">{profile.email}</p>
-            )}
-            {profile?.discord_name && (
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(profile.discord_name!).then(() => {
-                    setCopiedDiscord(true);
-                    setTimeout(() => setCopiedDiscord(false), 2000);
-                  });
-                }}
-                className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-full transition-colors"
-              >
-                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-                </svg>
-                <span>{copiedDiscord ? "คัดลอกแล้ว!" : profile.discord_name}</span>
-              </button>
             )}
           </div>
           {userRole && (
@@ -218,7 +239,7 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
                     ? "bg-slate-50 text-slate-500 border-slate-200"
                     : daysLeft <= 7
                     ? "bg-red-50 text-red-600 border-red-200"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
                 }`}>
                   {finished ? `${totalDays} วัน` : `เหลือ ${daysLeft} วัน`}
                 </span>
@@ -288,26 +309,83 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
                         </div>
                       ))}
                     </div>
-                    {(activeTasks.length + waitingTasks.length) > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground">งานปัจจุบัน</p>
-                        <div className="rounded-xl border divide-y overflow-hidden">
-                          {[...activeTasks, ...waitingTasks].map((t) => (
-                            <div key={t.id} className="flex items-center gap-2 px-3 py-2.5">
-                              {t.status === "in_progress"
-                                ? <Clock className="w-3 h-3 text-yellow-500" />
-                                : <Clock className="w-3 h-3 text-amber-500" />}
-                              <p className="text-sm flex-1 truncate">{t.title}</p>
-                              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                                t.status === "in_progress" ? "bg-yellow-100 text-yellow-700" : "bg-amber-100 text-amber-700"
-                              }`}>
-                                {t.status === "in_progress" ? "กำลังทำ" : "รอตรวจสอบ"}
-                              </span>
-                            </div>
-                          ))}
+                    {(activeTasks.length + waitingTasks.length) > 0 && (() => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground">งานปัจจุบัน ({activeTasks.length + waitingTasks.length})</p>
+                          <div className="space-y-2">
+                            {[...activeTasks, ...waitingTasks].map((t) => {
+                              const priority  = t.priority ?? "normal";
+                              const pcfg      = PRIORITY_CFG[priority];
+                              const isOverdue = !!t.due_date && t.due_date < todayStr;
+                              const creator   = t.created_by ? creatorsMap[t.created_by] : null;
+                              const tidx      = getTimelineIdx(t.status, !!t.assigned_to);
+                              return (
+                                <div key={t.id} className="rounded-xl border border-gray-100 bg-white p-3 space-y-2.5 shadow-sm">
+                                  {/* title + status + priority */}
+                                  <div className="flex items-start gap-2">
+                                    <p className="text-sm font-medium flex-1 leading-snug">{t.title}</p>
+                                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
+                                      t.status === "in_progress" ? "bg-yellow-50 text-yellow-700 border-yellow-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                                    }`}>
+                                      {t.status === "in_progress" ? "กำลังทำ" : "รอตรวจสอบ"}
+                                    </span>
+                                  </div>
+
+                                  {/* priority + due_date row */}
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {priority !== "normal" && (
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${pcfg.color}`}>
+                                        <Flag className="w-2.5 h-2.5" /> {pcfg.label}
+                                      </span>
+                                    )}
+                                    {t.due_date && (
+                                      <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${isOverdue ? "bg-red-50 text-red-500 border-red-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
+                                        <CalendarClock className="w-2.5 h-2.5" />
+                                        {t.due_date}
+                                        {isOverdue && <span className="ml-0.5 font-semibold">· เกิน</span>}
+                                      </span>
+                                    )}
+                                    {creator && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground px-2 py-0.5 rounded-full border border-gray-100 bg-gray-50">
+                                        <UserPlus className="w-2.5 h-2.5" />
+                                        {creator.display_name || creator.email?.split("@")[0] || "ไม่ระบุ"}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* mini timeline stepper */}
+                                  <div className="flex items-start">
+                                    {TIMELINE_STEPS.map((step, idx) => {
+                                      const done    = idx < tidx;
+                                      const current = idx === tidx;
+                                      return (
+                                        <div key={step.key} className="flex flex-col items-center flex-1 relative">
+                                          {idx < TIMELINE_STEPS.length - 1 && (
+                                            <div className={`absolute top-2.5 h-px w-full ${done || current ? "bg-blue-400" : "bg-gray-200"}`} style={{ left: "50%" }} />
+                                          )}
+                                          <div className={`relative z-10 w-5 h-5 rounded-full flex items-center justify-center border-2 ${
+                                            done    ? "bg-blue-500 border-blue-500 text-white" :
+                                            current ? "bg-white border-blue-500 text-blue-600" :
+                                                      "bg-white border-gray-200 text-gray-300"
+                                          }`}>
+                                            <step.Icon className="w-2.5 h-2.5" />
+                                          </div>
+                                          <span className={`mt-1 text-center text-[9px] leading-tight ${
+                                            done ? "text-blue-500" : current ? "text-blue-600 font-semibold" : "text-gray-300"
+                                          }`}>{step.label}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* ทีมที่สังกัด */}
@@ -323,7 +401,7 @@ export function UserProfileViewDialog({ userId, open, onOpenChange }: Props) {
                           <div key={t.team_id} className="flex items-center gap-3 px-3 py-2.5">
                             <Avatar className="w-7 h-7 shrink-0">
                               <AvatarImage src={t.team_logo_url ?? undefined} className="object-cover" />
-                              <AvatarFallback className="text-xs bg-emerald-100 text-emerald-700">{t.team_name[0]}</AvatarFallback>
+                              <AvatarFallback className="text-xs bg-blue-100 text-blue-700">{t.team_name[0]}</AvatarFallback>
                             </Avatar>
                             <p className="text-sm flex-1 truncate font-medium">{t.team_name}</p>
                             <Badge variant="outline" className={`text-[11px] shrink-0 ${

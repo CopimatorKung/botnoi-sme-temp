@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -194,12 +194,12 @@ export function NotificationBell({ onTaskClick }: NotificationBellProps) {
                 <div className="text-sm leading-relaxed">
                   <span className="font-medium">{inv.inviter_name}</span>
                   {" "}ขอเชิญคุณเข้าร่วมทีม{" "}
-                  <span className="font-semibold text-emerald-700">「{inv.team_name}」</span>
+                  <span className="font-semibold text-blue-700">「{inv.team_name}」</span>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 flex-1"
+                    className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1 flex-1"
                     onClick={() => accept(inv)}
                   >
                     <Check className="w-3 h-3" />

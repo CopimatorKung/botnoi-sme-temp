@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ export function InternshipExpiredScreen() {
 
           <div className="space-y-2 pt-1">
             <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
               onClick={handleReRegister}
               disabled={loading}
             >

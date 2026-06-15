@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -87,7 +87,7 @@ export function SettingsTab() {
                 </p>
                 <span className={`inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
                   allowFileUpload
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    ? "bg-blue-50 text-blue-700 border border-blue-200"
                     : "bg-slate-100 text-slate-500 border border-slate-200"
                 }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${allowFileUpload ? "bg-emerald-500" : "bg-slate-400"}`} />

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+﻿import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,7 +186,7 @@ function AuthPage() {
                 className={`w-full pl-10 pr-11 py-3 rounded-xl border text-sm outline-none focus:ring-2 transition-all bg-slate-50/60 placeholder:text-slate-300 ${
                   confirmPassword && password !== confirmPassword
                     ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                    : "border-slate-200 focus:border-emerald-400 focus:ring-emerald-100"
+                    : "border-slate-200 focus:border-emerald-400 focus:ring-blue-100"
                 }`} />
               <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">

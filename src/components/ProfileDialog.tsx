@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -87,8 +87,6 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
   const fileRef = useRef<HTMLInputElement>(null);
   const [myTeams, setMyTeams] = useState<MyTeam[]>([]);
   const [myTasks, setMyTasks] = useState<MyTask[]>([]);
-  const [discordName, setDiscordName] = useState("");
-  const [copiedDiscord, setCopiedDiscord] = useState(false);
 
   useEffect(() => {
     if (!open) { setActiveTab("profile"); setConfirmLogout(false); return; }
@@ -108,7 +106,6 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
         setGithubUrl((prof as any).github_url ?? "");
         setInstagramUrl((prof as any).instagram_url ?? "");
         setFacebookUrl((prof as any).facebook_url ?? "");
-        setDiscordName((prof as any).discord_name ?? "");
       }
       if (memberships && (memberships as any[]).length > 0) {
         const teamIds = (memberships as any[]).map((m: any) => m.team_id);
@@ -262,7 +259,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
             <div className="relative">
               <Avatar className="w-20 h-20 border-4 border-background shadow-md">
                 <AvatarImage src={avatarPreview ?? undefined} className="object-cover" />
-                <AvatarFallback className="text-2xl font-bold bg-emerald-100 text-emerald-700">
+                <AvatarFallback className="text-2xl font-bold bg-blue-100 text-blue-700">
                   {profile?.display_name?.[0]?.toUpperCase() ?? initials}
                 </AvatarFallback>
               </Avatar>
@@ -306,24 +303,6 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
           </div>
           <div className="flex items-center justify-center gap-2 mt-0.5 flex-wrap">
             <p className="text-xs text-muted-foreground">{user?.email}</p>
-            {discordName && (
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(discordName).then(() => {
-                    setCopiedDiscord(true);
-                    setTimeout(() => setCopiedDiscord(false), 2000);
-                  });
-                }}
-                title="คลิกเพื่อคัดลอก Discord"
-                className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-full transition-colors"
-              >
-                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.033.05a19.91 19.91 0 0 0 5.993 3.03.077.077 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
-                </svg>
-                <span>{copiedDiscord ? "คัดลอกแล้ว!" : discordName}</span>
-              </button>
-            )}
           </div>
           {role && (
             <Badge variant="outline" className={`text-[11px] mt-2 ${ROLE_COLOR[role] ?? ROLE_COLOR.member}`}>
@@ -349,7 +328,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
                     ? "bg-slate-50 text-slate-500 border-slate-200"
                     : daysLeft <= 7
                     ? "bg-red-50 text-red-600 border-red-200"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
                 }`}>
                   {finished ? `${totalDays} วัน` : `เหลือ ${daysLeft} วัน`}
                 </span>
@@ -402,7 +381,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
           <div className="shrink-0 px-6 py-3 border-t bg-card flex items-center gap-2">
             <div className="flex-1" />
             <Button variant="outline" size="sm" onClick={() => setActiveTab("profile")}>ยกเลิก</Button>
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleSave} disabled={saving}>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
               {saving ? "กำลังบันทึก..." : "บันทึก"}
             </Button>
@@ -501,7 +480,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
                       <div key={t.team_id} className="flex items-center gap-3 px-3 py-2.5">
                         <Avatar className="w-7 h-7 shrink-0">
                           <AvatarImage src={t.team_logo_url ?? undefined} className="object-cover" />
-                          <AvatarFallback className="text-xs bg-emerald-100 text-emerald-700">{t.team_name[0]}</AvatarFallback>
+                          <AvatarFallback className="text-xs bg-blue-100 text-blue-700">{t.team_name[0]}</AvatarFallback>
                         </Avatar>
                         <p className="text-sm flex-1 truncate font-medium">{t.team_name}</p>
                         <Badge variant="outline" className={`text-[11px] shrink-0 ${

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -172,7 +172,7 @@ export function TeamTab() {
               {count > 0 && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   view === val
-                    ? val === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-emerald-100 text-emerald-700"
+                    ? val === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
                     : "bg-muted text-muted-foreground"
                 }`}>
                   {count}
@@ -365,7 +365,7 @@ export function TeamTab() {
                   {isApproving ? (
                     <>
                       <Select onValueChange={(v) => setPendingApproval({ uid: m.id, name: m.display_name || m.email || "—", role: v as ActiveRole })}>
-                        <SelectTrigger className="h-8 w-40 text-xs border-emerald-300 focus:ring-emerald-400">
+                        <SelectTrigger className="h-8 w-40 text-xs border-blue-300 focus:ring-blue-400">
                           <SelectValue placeholder="เลือก role..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -384,7 +384,7 @@ export function TeamTab() {
                     <>
                       <Button
                         size="sm"
-                        className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                        className="h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
                         onClick={() => isTeamLeader ? approve(m.id, "member") : setApprovingId(m.id)}
                       >
                         <Check className="w-3.5 h-3.5" />
@@ -428,7 +428,7 @@ export function TeamTab() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setPendingApproval(null); setApprovingId(null); }}>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => {
                 if (pendingApproval) { approve(pendingApproval.uid, pendingApproval.role); setPendingApproval(null); }
               }}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+﻿import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -418,7 +418,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
             {task.team_logo_url && (
               <AvatarImage src={task.team_logo_url} alt={task.team_name ?? "team"} className="object-cover" />
             )}
-            <AvatarFallback className="text-xs font-semibold bg-emerald-100 text-emerald-700">
+            <AvatarFallback className="text-xs font-semibold bg-blue-100 text-blue-700">
               {task.team_name?.[0]?.toUpperCase() ?? initials(task.assignee_name)}
             </AvatarFallback>
           </Avatar>
@@ -474,7 +474,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
               )}
               {task.customer_name && (
                 <button
-                  className="flex items-center gap-1 text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full px-2 py-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors group"
+                  className="flex items-center gap-1 text-xs bg-blue-50 dark:bg-emerald-950/30 text-blue-700 dark:text-emerald-400 border border-blue-200 dark:border-emerald-800 rounded-full px-2 py-0.5 hover:bg-blue-100 dark:hover:bg-emerald-900/50 transition-colors group"
                   title="คลิกเพื่อคัดลอก"
                   onClick={() => { navigator.clipboard.writeText(task.customer_name!); toast.success(`คัดลอก "${task.customer_name}" แล้ว`); }}
                 >
@@ -647,7 +647,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50 gap-1.5"
+                className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 gap-1.5"
                 disabled={isProcessing}
                 onClick={() => { setReassignTarget(task); setReassignAssignee("__none__"); }}
               >
@@ -824,7 +824,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
         <DialogContent aria-describedby={undefined} className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-600" /> ย้ายงาน
+              <UserCheck className="w-4 h-4 text-blue-600" /> ย้ายงาน
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -844,7 +844,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
                   onClick={() => { setReassignMode(opt.key); setReassignAssignee("__none__"); setReassignTeam("__none__"); setReassignSearch(""); setReassignTeamSearch(""); }}
                   className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-lg border text-left transition-colors ${
                     reassignMode === opt.key
-                      ? "border-emerald-500 bg-emerald-50/60 text-emerald-800"
+                      ? "border-emerald-500 bg-blue-50/60 text-blue-800"
                       : "border-border text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
@@ -938,7 +938,7 @@ export function AdminReviewTab({ goToTeam }: AdminReviewTabProps) {
               ยกเลิก
             </Button>
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
               disabled={(reassignMode === "person" ? reassignAssignee === "__none__" : reassignTeam === "__none__") || !!processing}
               onClick={handleReassign}
             >

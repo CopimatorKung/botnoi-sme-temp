@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -461,7 +461,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
             </Button>
           ))}
         </div>
-        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5" onClick={() => setShowCreate(true)}>
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4" />
           สร้างงาน
         </Button>
@@ -474,7 +474,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
           {([
             { key: "waiting", label: "รอรับงาน",  active: "bg-amber-500 text-white border-amber-500" },
             { key: "claimed", label: "รับแล้ว",   active: "bg-slate-700 text-white border-slate-700" },
-            { key: "done",    label: "เสร็จแล้ว", active: "bg-emerald-600 text-white border-emerald-600" },
+            { key: "done",    label: "เสร็จแล้ว", active: "bg-blue-600 text-white border-blue-600" },
           ] as const).map(({ key, label, active }) => (
             <button
               key={key}
@@ -555,7 +555,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                        className="h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
                         onClick={() => { setClaimingTaskId(t.id); setClaimWorkType("solo"); }}
                       >
                         รับงาน
@@ -629,7 +629,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                     onClick={() => { setCreateClaimType(opt.key); if (opt.key === "board") setCreateWorkType("team"); }}
                     className={`flex-1 flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-lg border text-left transition-colors ${
                       createClaimType === opt.key
-                        ? "border-emerald-500 bg-emerald-50/60 text-emerald-800"
+                        ? "border-emerald-500 bg-blue-50/60 text-blue-800"
                         : "border-border text-muted-foreground hover:bg-muted/50"
                     }`}
                   >
@@ -655,7 +655,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                       onClick={() => setCreateWorkType(opt.key)}
                       className={`flex-1 flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-lg border text-left transition-colors ${
                         createWorkType === opt.key
-                          ? "border-emerald-500 bg-emerald-50/60 text-emerald-800"
+                          ? "border-emerald-500 bg-blue-50/60 text-blue-800"
                           : "border-border text-muted-foreground hover:bg-muted/50"
                       }`}
                     >
@@ -704,7 +704,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => { setShowCreate(false); resetCreate(); }}>ยกเลิก</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleCreate} disabled={creating}>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleCreate} disabled={creating}>
               {creating ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />กำลังสร้าง...</> : createClaimType === "individual" ? "รับงาน" : "โพสลงบอร์ด"}
             </Button>
           </div>
@@ -723,7 +723,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
               onClick={() => setClaimWorkType("solo")}
               className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${
                 claimWorkType === "solo"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                  ? "border-emerald-500 bg-blue-50 text-blue-700 shadow-sm"
                   : "border-slate-200 text-slate-500 hover:bg-slate-50"
               }`}
             >
@@ -736,7 +736,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
               onClick={() => setClaimWorkType("team")}
               className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${
                 claimWorkType === "team"
-                  ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm"
+                  ? "border-emerald-500 bg-blue-50 text-blue-700 shadow-sm"
                   : "border-slate-200 text-slate-500 hover:bg-slate-50"
               }`}
             >
@@ -750,7 +750,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">เลือกทีม</label>
               <Select value={claimTeamId} onValueChange={setClaimTeamId}>
-                <SelectTrigger className="focus-visible:ring-emerald-500">
+                <SelectTrigger className="focus-visible:ring-blue-500">
                   <SelectValue placeholder="เลือกทีมที่รับงานนี้..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -765,7 +765,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
 
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setClaimingTaskId(null)}>ยกเลิก</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirmClaim}>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={confirmClaim}>
               ยืนยันรับงาน
             </Button>
           </DialogFooter>
@@ -785,7 +785,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingStatus(null)}>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => {
                 if (pendingStatus) updateStatus(pendingStatus.id, pendingStatus.status);
                 setPendingStatus(null);
@@ -915,7 +915,7 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                     <Badge className={statusColor[t.status]}>{statusLabel[t.status]}</Badge>
                   )}
                   {myTeam && (
-                    <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                       👥 {myTeam.name}
                     </span>
                   )}
