@@ -1383,18 +1383,6 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                       </div>
                     </div>
 
-                    {/* Progress bar */}
-                    {totalTasks > 0 && (
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs text-gray-400">ความคืบหน้า</span>
-                          <span className="text-xs font-medium text-gray-600">{completion}%</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full bg-gradient-to-r ${color.bar} rounded-full transition-all`} style={{ width: `${completion}%` }} />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               );

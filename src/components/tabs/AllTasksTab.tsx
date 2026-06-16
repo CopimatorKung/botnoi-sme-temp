@@ -394,6 +394,8 @@ export function AllTasksTab() {
       { id:"tk165", title:"Branding สำหรับสินค้าที่ยกเลิก Production",   status:"cancelled", assigned_to:"p6", team_id:"tm5", created_at:ago(65), review_note:"แอดมินยืนยัน: ยกเลิกสินค้า",    description:noDesc,    due_date:null, created_by:"p9",  priority:"normal" },
       { id:"tk166", title:"ส่ง Report ลูกค้าที่ยุติสัญญาแล้ว",           status:"cancelled", assigned_to:"p7", team_id:"tm1", created_at:ago(80), review_note:"แอดมินยืนยัน: สิ้นสุดสัญญา",    description:sme("04"), due_date:null, created_by:"p1",  priority:"normal" },
       { id:"tk167", title:"ปิด Account ลูกค้าที่ไม่ต่ออายุ",             status:"cancelled", assigned_to:"p8", team_id:"tm2", created_at:ago(90), review_note:"แอดมินยืนยัน: หมดสัญญา ปิด",   description:noDesc,    due_date:null, created_by:"p10", priority:"normal" },
+      { id:"tk168", title:"[ทดสอบ] งานที่มีรายละเอียดเยอะมาก",           status:"open",      assigned_to:"p1", team_id:"tm1", created_at:minsAgo(1), review_note:null, due_date:due(3), created_by:"p10", priority:"high",
+        description:`ประเภท SME: #SME99\nรายละเอียดงาน:\nลูกค้ากรอกรายละเอียดมาเยอะมากเพื่อทดสอบ UI\n\nขั้นตอนที่ 1: ติดต่อลูกค้าผ่านช่องทาง LINE OA และนัดหมายวันเวลาที่สะดวกสำหรับการประชุมออนไลน์ผ่าน Zoom หรือ Google Meet\n\nขั้นตอนที่ 2: จัดเตรียมเอกสาร Proposal ฉบับสมบูรณ์ ประกอบด้วย Scope of Work, Timeline, Budget Estimate และ Terms & Conditions ที่ผ่านการตรวจสอบจากฝ่ายกฎหมายแล้ว\n\nขั้นตอนที่ 3: นำเสนอ Proposal ให้กับทีมผู้บริหารของลูกค้า และตอบข้อซักถามทุกประเด็นให้ครบถ้วน\n\nขั้นตอนที่ 4: รับ Feedback และแก้ไข Proposal ตามความต้องการของลูกค้า คาดว่าจะมีการแก้ไขประมาณ 2-3 รอบ\n\nขั้นตอนที่ 5: ส่งมอบ Proposal ฉบับสุดท้ายและรอการอนุมัติ\n\nหมายเหตุ: ลูกค้ารายนี้เป็น Enterprise Client ที่มีงบประมาณสูงและมีความคาดหวังสูง กรุณาให้ความสำคัญเป็นพิเศษ` },
     ];
 
     setProfiles(mockProfiles);
@@ -776,21 +778,24 @@ export function AllTasksTab() {
         )}
       </div>
 
-      {/* Result summary — single row */}
+      {/* Result summary + pagination — single row */}
       <div className="flex items-center justify-between px-0.5">
-        <p className="text-xs text-gray-400">
-          {anyFilterActive ? `แสดง ${sorted.length} จาก ${tasks.length} รายการ` : `${tasks.length} รายการทั้งหมด`}
-          {advancedActive && (() => {
-            const n = [smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length;
-            return n > 0 ? <span className="ml-1.5 text-gray-300">• กรอง {n} เงื่อนไข</span> : null;
-          })()}
-        </p>
-        {anyFilterActive && (
-          <button onClick={() => { changeStatus(null); changeSearch(""); resetAdvanced(); }}
-            className="text-xs text-gray-400 hover:text-blue-500 transition-colors flex items-center gap-1">
-            <X className="w-3 h-3" /> ล้างทั้งหมด
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-gray-400">
+            {anyFilterActive ? `แสดง ${sorted.length} จาก ${tasks.length} รายการ` : `${tasks.length} รายการทั้งหมด`}
+            {advancedActive && (() => {
+              const n = [smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length;
+              return n > 0 ? <span className="ml-1.5 text-gray-300">• กรอง {n} เงื่อนไข</span> : null;
+            })()}
+          </p>
+          {anyFilterActive && (
+            <button onClick={() => { changeStatus(null); changeSearch(""); resetAdvanced(); }}
+              className="text-xs text-gray-400 hover:text-blue-500 transition-colors flex items-center gap-1">
+              <X className="w-3 h-3" /> ล้างทั้งหมด
+            </button>
+          )}
+        </div>
+        {totalPages > 1 && <PaginationBar currentPage={currentPage} totalPages={totalPages} fromEntry={fromEntry} toEntry={toEntry} total={sorted.length} onChange={setCurrentPage} />}
       </div>
 
       {/* Task list */}
@@ -806,7 +811,6 @@ export function AllTasksTab() {
         </div>
       ) : (
         <>
-          {totalPages > 1 && <PaginationBar currentPage={currentPage} totalPages={totalPages} fromEntry={fromEntry} toEntry={toEntry} total={sorted.length} onChange={setCurrentPage} />}
           <div className="grid gap-2">
           {paged.map((t) => {
             const assignee = t.assigned_to ? profileMap[t.assigned_to] : null;
@@ -938,7 +942,7 @@ export function AllTasksTab() {
 
                 {/* Description */}
                 {t.description && (
-                  <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-600 leading-relaxed">
+                  <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-600 leading-relaxed max-h-32 overflow-y-auto">
                     {renderDescription(t.description)}
                   </div>
                 )}
