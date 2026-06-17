@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -109,60 +109,23 @@ export function AdminMembersTab() {
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
-
-    const [
-      { data: profiles, error },
-      { data: roles },
-      { data: memberships },
-      { data: teamsData },
-    ] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, display_name, email, avatar_url, internship_start, internship_end")
-        .order("display_name", { ascending: true }),
-      supabase.from("user_roles" as any).select("user_id, role"),
-      supabase.from("team_members" as any).select("user_id, team_id"),
-      supabase.from("teams" as any).select("id, name"),
-    ]);
-
-    if (error) {
-      toast.error("โหลดสมาชิกไม่สำเร็จ");
-      setLoading(false);
-      return;
-    }
-
-    // Role map: user_id → role
-    const roleMap = Object.fromEntries(
-      ((roles as any[]) ?? []).map((r: any) => [r.user_id, r.role])
-    );
-
-    // Team map: team_id → name
-    const teamNameMap = Object.fromEntries(
-      ((teamsData as any[]) ?? []).map((t: any) => [t.id, t.name])
-    );
-
-    // Member → teams: user_id → [{ id, name }]
-    const memberTeamsMap: Record<string, MemberTeamInfo[]> = {};
-    ((memberships as any[]) ?? []).forEach((m: any) => {
-      if (!memberTeamsMap[m.user_id]) memberTeamsMap[m.user_id] = [];
-      memberTeamsMap[m.user_id].push({
-        id: m.team_id,
-        name: teamNameMap[m.team_id] ?? "ไม่ทราบชื่อ",
-      });
-    });
-
-    setMembers(
-      ((profiles as any[]) ?? []).map((p: any) => ({
-        id: p.id,
-        display_name: p.display_name ?? null,
-        email: p.email ?? null,
-        avatar_url: p.avatar_url ?? null,
-        internship_start: p.internship_start ?? null,
-        internship_end: p.internship_end ?? null,
-        role: roleMap[p.id] ?? null,
-        teams: memberTeamsMap[p.id] ?? [],
-      }))
-    );
+    const today = new Date();
+    const d = (offset: number) => new Date(today.getTime() + offset * 86400000).toISOString().slice(0, 10);
+    const mockMembers: MemberRow[] = [
+      { id: "u1",  display_name: "วิชัย สุขใส",      email: "wichai@example.com",    avatar_url: null, role: "admin",       internship_start: d(-180), internship_end: null,    teams: [{ id: "tm1", name: "ทีมขาย Alpha" }] },
+      { id: "u2",  display_name: "สมหญิง มีสุข",     email: "somying@example.com",   avatar_url: null, role: "ceo",         internship_start: d(-365), internship_end: null,    teams: [] },
+      { id: "u3",  display_name: "ประเสริฐ รักดี",   email: "prasert@example.com",   avatar_url: null, role: "developer",   internship_start: d(-90),  internship_end: d(275),  teams: [{ id: "tm3", name: "ทีม CRM" }] },
+      { id: "u4",  display_name: "นภา วงศ์ใหญ่",    email: "napa@example.com",      avatar_url: null, role: "team_leader", internship_start: d(-60),  internship_end: d(120),  teams: [{ id: "tm2", name: "ทีมขาย Beta" }] },
+      { id: "u5",  display_name: "กิตติ ชาญชัย",    email: "kitti@example.com",     avatar_url: null, role: "member",      internship_start: d(-30),  internship_end: d(60),   teams: [{ id: "tm1", name: "ทีมขาย Alpha" }, { id: "tm2", name: "ทีมขาย Beta" }] },
+      { id: "u6",  display_name: "อรุณี แก้วใส",    email: "arunee@example.com",    avatar_url: null, role: "member",      internship_start: d(-15),  internship_end: d(25),   teams: [{ id: "tm4", name: "ทีม Support" }] },
+      { id: "u7",  display_name: "ธีระ มั่นคง",     email: "theera@example.com",    avatar_url: null, role: "member",      internship_start: d(-10),  internship_end: d(10),   teams: [{ id: "tm5", name: "ทีม Marketing" }] },
+      { id: "u8",  display_name: "มานี รุ่งเรือง",  email: "manee@example.com",     avatar_url: null, role: "member",      internship_start: d(-5),   internship_end: d(-1),   teams: [{ id: "tm3", name: "ทีม CRM" }] },
+      { id: "u9",  display_name: "สุชาติ ดีงาม",    email: "suchat@example.com",    avatar_url: null, role: "team_leader", internship_start: d(-120), internship_end: d(245),  teams: [{ id: "tm4", name: "ทีม Support" }] },
+      { id: "u10", display_name: "ลลิตา พรหมดี",    email: "lalita@example.com",    avatar_url: null, role: "member",      internship_start: d(-3),   internship_end: d(87),   teams: [{ id: "tm5", name: "ทีม Marketing" }] },
+      { id: "u11", display_name: "ชาตรี ใจดี",      email: "chatree@example.com",   avatar_url: null, role: "pending",     internship_start: null,    internship_end: null,    teams: [] },
+      { id: "u12", display_name: "พิมพ์ใจ นาคา",    email: "pimjai@example.com",    avatar_url: null, role: "pending",     internship_start: null,    internship_end: null,    teams: [] },
+    ];
+    setMembers(mockMembers);
     setLoading(false);
   }, []);
 

@@ -513,7 +513,15 @@ export function AllTasksTab() {
   const anyFilterActive = statusFilter || search.trim() || advancedActive;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
+
+      {/* Page Header */}
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-gray-900">งานทั้งหมด</h1>
+          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">{tasks.length}</span>
+        </div>
+      </div>
 
       {/* ── Control bar ── */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">

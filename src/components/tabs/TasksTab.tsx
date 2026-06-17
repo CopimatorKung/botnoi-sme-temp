@@ -407,7 +407,13 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">งาน</h1>
+      </div>
+
       {/* Search bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />

@@ -192,7 +192,7 @@ export function Dashboard() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-background">
+        <main className="flex-1 overflow-y-auto bg-background" style={{ scrollbarGutter: "stable" }}>
           <div className="max-w-6xl mx-auto px-5 py-6">
             {tab === "customers" && !CUSTOMERS_TAB_HIDDEN && (
               <CustomersTab
