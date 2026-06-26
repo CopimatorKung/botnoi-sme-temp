@@ -48,6 +48,33 @@ const ROLE_LABEL: Record<string, string> = {
 };
 const POSITION_LABEL: Record<string, string> = { leader: "หัวหน้าทีม", member: "สมาชิก" };
 
+const MOCK_PROFILE: Omit<Profile, "id"> = {
+  display_name: "ณัฐชนน วงษ์สุวรรณ",
+  email: "natchanon.w@botnoi.co.th",
+  avatar_url: null,
+  bio: "Full-Stack Developer ที่ชอบสร้าง product ที่ solve real problem 🚀 ชอบ React, TypeScript และ Supabase",
+  github_url: "https://github.com/natchanondev",
+  instagram_url: null,
+  facebook_url: null,
+  internship_start: "2025-06-01",
+  internship_end: "2025-08-31",
+  discord_name: "natchanon#4521",
+};
+
+const MOCK_TEAMS: MyTeam[] = [
+  { team_id: "t1", team_name: "BotBuilder Alpha", position: "leader", team_logo_url: null },
+  { team_id: "t2", team_name: "FlowSync Labs",    position: "member", team_logo_url: null },
+];
+
+const MOCK_TASKS: MyTask[] = [
+  { id: "tk1", title: "ออกแบบ UI หน้า Dashboard ใหม่",          status: "in_progress", created_at: "2025-07-01T09:00:00Z", team_id: "t1", description: "ปรับ layout ให้รองรับ dark mode และ mobile" },
+  { id: "tk2", title: "พัฒนา API endpoint สำหรับ report",        status: "in_progress", created_at: "2025-07-03T10:00:00Z", team_id: "t1", description: "สร้าง REST API ดึงข้อมูล task summary" },
+  { id: "tk3", title: "ทดสอบระบบ authentication flow",           status: "done",        created_at: "2025-06-28T08:00:00Z", team_id: "t2", description: "เขียน test cases ครอบ edge cases ทั้งหมด" },
+  { id: "tk4", title: "แก้บัค notification ส่งซ้ำ",              status: "done",        created_at: "2025-06-25T14:00:00Z", team_id: "t1", description: "debounce + idempotency key" },
+  { id: "tk5", title: "เพิ่มฟีเจอร์ export Excel รายงานทีม",     status: "approved",    created_at: "2025-06-20T11:00:00Z", team_id: "t2", description: "ใช้ xlsx library สร้างไฟล์ฝั่ง client" },
+  { id: "tk6", title: "ปรับ onboarding form รองรับข้อมูลใหม่",   status: "approved",    created_at: "2025-06-18T09:00:00Z", team_id: "t1", description: "เพิ่ม field discord และ internship period" },
+];
+
 const MOCK_PORTFOLIOS: PortfolioItem[] = [
   {
     id: "pf1", title: "ระบบจัดการคลังสินค้าอัจฉริยะ", projectType: "team",
@@ -221,31 +248,23 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
     setLoading(true);
     setTaskPage(0); setPortfolioPage(0); setTaskSearch(""); setPortfolioSearch("");
     setPortfolios(MOCK_PORTFOLIOS);
+    setMyTasks(MOCK_TASKS);
+    setMyTeams(MOCK_TEAMS);
     Promise.all([
       supabase.from("profiles").select("id,display_name,email,avatar_url,bio,github_url,instagram_url,facebook_url,internship_start,internship_end,discord_name").eq("id", user.id).single(),
       supabase.from("team_members" as any).select("team_id,position").eq("user_id", user.id),
       supabase.from("tasks").select("id,title,status,review_note,created_at,team_id,description")
         .eq("assigned_to", user.id).not("status", "eq", "cancelled").order("created_at", { ascending: false }),
-    ]).then(async ([{ data: prof }, { data: memberships }, { data: tasks }]) => {
-      if (prof) {
-        setProfile(prof as Profile);
-        setDisplayName((prof as any).display_name ?? "");
-        setAvatarPreview((prof as any).avatar_url ?? null);
-        setBio((prof as any).bio ?? "");
-        setGithubUrl((prof as any).github_url ?? "");
-        setInstagramUrl((prof as any).instagram_url ?? "");
-        setFacebookUrl((prof as any).facebook_url ?? "");
-      }
-      if (memberships && (memberships as any[]).length > 0) {
-        const teamIds = (memberships as any[]).map((m: any) => m.team_id);
-        const { data: teamsData } = await supabase.from("teams" as any).select("id,name,logo_url").in("id", teamIds);
-        const teamMap = Object.fromEntries(((teamsData ?? []) as any[]).map((t: any) => [t.id, t]));
-        setMyTeams((memberships as any[]).map((m: any) => ({
-          team_id: m.team_id, team_name: teamMap[m.team_id]?.name ?? "ไม่ทราบชื่อ",
-          position: m.position, team_logo_url: teamMap[m.team_id]?.logo_url ?? null,
-        })));
-      } else { setMyTeams([]); }
-      setMyTasks((tasks as MyTask[]) ?? []);
+    ]).then(async ([{ data: prof }]) => {
+      const resolvedProf = prof ?? { ...MOCK_PROFILE, id: user?.id ?? "mock" };
+      setProfile(resolvedProf as Profile);
+      setDisplayName((resolvedProf as any).display_name ?? "");
+      setAvatarPreview((resolvedProf as any).avatar_url ?? null);
+      setBio((resolvedProf as any).bio ?? "");
+      setGithubUrl((resolvedProf as any).github_url ?? "");
+      setInstagramUrl((resolvedProf as any).instagram_url ?? "");
+      setFacebookUrl((resolvedProf as any).facebook_url ?? "");
+
       setLoading(false);
     });
   }, [open, user]);
@@ -408,7 +427,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
       >
 
         {/* ── BANNER ── */}
-        <div
+        {!portfolioView && <div
           className="relative shrink-0 px-6 py-5"
           style={{ background: `linear-gradient(135deg, ${bannerColor.from}, ${bannerColor.to})` }}
         >
@@ -516,7 +535,7 @@ export function ProfileDialog({ open, onOpenChange, onSaved, onSignOut }: Profil
 
             <BotnoiLogo />
           </div>
-        </div>
+        </div>}
 
         {/* ══ SETTINGS MODE ══ */}
         {activeTab === "settings" ? (
