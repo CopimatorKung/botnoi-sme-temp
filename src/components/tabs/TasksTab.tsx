@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { UserCheck, Plus, Upload, Trash2, Loader2, Search, X } from "lucide-react";
+import { UserCheck, Plus, Upload, Trash2, Loader2, Search, X, Building2, Phone, MapPin, Hash, Tag, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
@@ -27,6 +27,13 @@ interface Task {
   team_id: string | null;
   due_date: string | null;
   created_at: string;
+  work_type?: string;
+  job_id?: string;
+  company_name?: string;
+  phone?: string;
+  business_type?: string;
+  address?: string;
+  ref_number?: string;
 }
 
 interface Profile { id: string; display_name: string | null; email: string | null; }
@@ -49,6 +56,134 @@ const statusColor: Record<string, string> = {
 };
 
 interface MyTeam { id: string; name: string; }
+
+const MOCK_PROFILES: Profile[] = [
+  { id: "p_admin", display_name: "Admin", email: "admin@demo.com" },
+  { id: "p1",      display_name: "วิชัย สุขใส", email: "wichai@demo.com" },
+  { id: "p2",      display_name: "นภา พงษ์ดี", email: "napa@demo.com" },
+];
+
+const MOCK_CUSTOMERS: Customer[] = [
+  { id: "c1", display_name: "yosolo",                  line_user_id: null },
+  { id: "c2", display_name: "ร้านกาแฟ The Brew",       line_user_id: null },
+  { id: "c3", display_name: "Trendy Fashion",           line_user_id: null },
+  { id: "c4", display_name: "บริษัท ทรู ดิจิทัล จำกัด", line_user_id: null },
+  { id: "c5", display_name: "SCB Thailand",             line_user_id: null },
+  { id: "c6", display_name: "โรงพยาบาลเวชธานี",        line_user_id: null },
+  { id: "c7", display_name: "MBK Center",               line_user_id: null },
+  { id: "c8", display_name: "Lazada Thailand",          line_user_id: null },
+];
+
+const MOCK_TEAMS: MyTeam[] = [
+  { id: "tm1", name: "ทีมขาย Alpha" },
+  { id: "tm2", name: "ทีม Support"  },
+];
+
+const getMockTasks = (): Task[] => {
+  const minsAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString();
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
+  const daysAgo  = (d: number) => new Date(Date.now() - d * 86400000).toISOString();
+  return [
+    {
+      id: "m1", title: "[LINE OA] KickStory Onboarding Flow",
+      status: "open", assigned_to: null, created_by: "p_admin",
+      customer_id: "c1", team_id: "tm1", due_date: null,
+      created_at: minsAgo(90),
+      work_type: "LINE OA", job_id: "KS-99421",
+      company_name: "KickStory Digital Agency", phone: "02-123-4567",
+      business_type: "ร้านอาหาร/คาเฟ่",
+      address: "123/45 Sukhumvit Rd, Khlong Toei, Bangkok 10110",
+      ref_number: "SN-B4D315BB",
+      description: "พัฒนาระบบ LINE Official Account พร้อมเชื่อมต่อ API สำหรับระบบสมาชิก และทำ Rich Menu แบบ Dynamic ตาม Segment ของลูกค้า เน้นการใช้งานที่ง่ายและตอบโจทย์ UX สำหรับกลุ่มผู้ใช้ภาษาไทย",
+    },
+    {
+      id: "m2", title: "[แชทบอท] ระบบตอบคำถามอัตโนมัติ The Brew",
+      status: "open", assigned_to: null, created_by: "p_admin",
+      customer_id: "c2", team_id: "tm1", due_date: null,
+      created_at: minsAgo(45),
+      work_type: "แชทบอท", job_id: "TB-00123",
+      company_name: "The Brew Coffee", phone: "081-234-5678",
+      business_type: "ร้านกาแฟ",
+      address: "45 Rama 4 Rd, Klong Toey, Bangkok 10110",
+      ref_number: "SN-C9F201AA",
+      description: "ติดตั้งระบบ Chatbot สำหรับตอบคำถามเรื่องเมนู ราคา และโปรโมชั่น ผ่านช่องทาง LINE OA ของร้าน",
+    },
+    {
+      id: "m3", title: "[เว็บไซต์] Trendy Fashion E-Commerce",
+      status: "in_progress", assigned_to: "p1", created_by: "p_admin",
+      customer_id: "c3", team_id: "tm2",
+      due_date: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+      created_at: hoursAgo(5),
+      work_type: "เว็บไซต์", job_id: "TF-00456",
+      company_name: "Trendy Fashion Co., Ltd.", phone: "02-456-7890",
+      business_type: "แฟชั่น/เครื่องแต่งกาย",
+      address: "789 Silom Rd, Bang Rak, Bangkok 10500",
+      ref_number: "SN-A7E102CC",
+      description: "พัฒนาเว็บไซต์ E-Commerce สำหรับขายเสื้อผ้าแฟชั่น พร้อมระบบตะกร้าสินค้าและชำระเงินออนไลน์",
+    },
+    {
+      id: "m4", title: "[LINE OA] True Digital CRM Integration",
+      status: "done", assigned_to: "p2", created_by: "p_admin",
+      customer_id: "c4", team_id: null, due_date: null,
+      created_at: daysAgo(2),
+      work_type: "LINE OA", job_id: "TD-00789",
+      company_name: "True Digital Group", phone: "02-555-8000",
+      business_type: "เทคโนโลยีดิจิทัล",
+      address: "18 True Tower, Ratchadaphisek Rd, Bangkok 10310",
+      ref_number: "SN-D3B409DD",
+      description: "เชื่อมต่อระบบ CRM ของ True Digital กับ LINE OA เพื่อจัดการลูกค้าและแจ้งเตือนอัตโนมัติ",
+    },
+    {
+      id: "m5", title: "[แชทบอท] AI Sales Bot สำหรับ SCB",
+      status: "open", assigned_to: null, created_by: "p_admin",
+      customer_id: "c5", team_id: "tm2", due_date: null,
+      created_at: minsAgo(20),
+      work_type: "แชทบอท", job_id: "SCB-00210",
+      company_name: "SCB Thailand", phone: "02-777-7777",
+      business_type: "ธนาคาร/การเงิน",
+      address: "9 Ratchadaphisek Rd, Chatuchak, Bangkok 10900",
+      ref_number: "SN-E5C312EE",
+      description: "พัฒนา AI Chatbot เพื่อช่วยงานขายและให้ข้อมูลผลิตภัณฑ์ทางการเงิน ตอบโจทย์ลูกค้า 24/7 บนช่องทาง LINE",
+    },
+    {
+      id: "m6", title: "[เว็บไซต์] Landing Page โรงพยาบาลเวชธานี",
+      status: "in_progress", assigned_to: "p1", created_by: "p_admin",
+      customer_id: "c6", team_id: "tm1",
+      due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+      created_at: daysAgo(1),
+      work_type: "เว็บไซต์", job_id: "VT-00334",
+      company_name: "โรงพยาบาลเวชธานี", phone: "02-734-0000",
+      business_type: "สุขภาพ/โรงพยาบาล",
+      address: "14 Lat Phrao 111, Wang Thonglang, Bangkok 10310",
+      ref_number: "SN-F6D413FF",
+      description: "ออกแบบและพัฒนา Landing Page สำหรับแคมเปญเจาะกลุ่มลูกค้าใหม่ พร้อมระบบนัดหมายแพทย์ออนไลน์",
+    },
+    {
+      id: "m7", title: "[LINE OA] Loyalty Program มาบุญครอง",
+      status: "open", assigned_to: null, created_by: "p_admin",
+      customer_id: "c7", team_id: null, due_date: null,
+      created_at: hoursAgo(3),
+      work_type: "LINE OA", job_id: "MBK-00567",
+      company_name: "MBK Center", phone: "02-620-9000",
+      business_type: "ห้างสรรพสินค้า/รีเทล",
+      address: "444 Phayathai Rd, Wang Mai, Pathum Wan, Bangkok 10330",
+      ref_number: "SN-G7E514GG",
+      description: "ระบบสะสมแต้มและแลกของรางวัลผ่าน LINE OA เชื่อมต่อกับฐานข้อมูลสมาชิกที่มีอยู่กว่า 200,000 คน",
+    },
+    {
+      id: "m8", title: "[แชทบอท] Order Tracking Bot LAZADA TH",
+      status: "cancelled", assigned_to: "p2", created_by: "p_admin",
+      customer_id: "c8", team_id: null, due_date: null,
+      created_at: daysAgo(5),
+      work_type: "แชทบอท", job_id: "LZ-00891",
+      company_name: "Lazada Thailand", phone: "02-018-0000",
+      business_type: "E-Commerce",
+      address: "29 Bhiraj Tower, Asok Montri Rd, Khlong Toei Nuea, Bangkok 10110",
+      ref_number: "SN-H8F615HH",
+      description: "Bot ติดตามพัสดุอัตโนมัติ เชื่อมต่อกับ logistics API แจ้งสถานะ real-time ผ่าน LINE Message API",
+    },
+  ];
+};
 
 interface TasksTabProps {
   goToCustomer?: (customerId: string) => void;
@@ -139,22 +274,22 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
     if (!user) return;
     const { data: memberships } = await supabase
       .from("team_members" as any).select("team_id").eq("user_id", user.id);
-    if (!memberships || memberships.length === 0) return;
+    if (!memberships || (memberships as any[]).length === 0) { setMyTeams(MOCK_TEAMS); return; }
     const teamIds = (memberships as any[]).map((m: any) => m.team_id);
     const { data: teams } = await supabase.from("teams" as any).select("id,name").in("id", teamIds);
-    setMyTeams((teams as MyTeam[]) || []);
+    setMyTeams((teams as MyTeam[])?.length ? (teams as MyTeam[]) : MOCK_TEAMS);
   };
   const loadTasks = async () => {
     const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
-    setTasks((data as Task[]) || []);
+    setTasks((data as Task[])?.length ? (data as Task[]) : getMockTasks());
   };
   const loadProfiles = async () => {
     const { data } = await supabase.from("profiles").select("id,display_name,email");
-    setProfiles(data || []);
+    setProfiles((data as Profile[])?.length ? (data as Profile[]) : MOCK_PROFILES);
   };
   const loadCustomers = async () => {
     const { data } = await supabase.from("customers").select("id,display_name,line_user_id").order("display_name");
-    setCustomers(data || []);
+    setCustomers((data as Customer[])?.length ? (data as Customer[]) : MOCK_CUSTOMERS);
   };
 
   const confirmClaim = async () => {
@@ -440,15 +575,13 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
           {([
             { key: "team",        label: "งานของทีม" },
             { key: "mine",        label: "ของฉัน" },
-            { key: "unassigned",  label: "ยังไม่มีคนรับ" },
+            { key: "unassigned",  label: "ยังไม่ได้รับ" },
             { key: "in_progress", label: "กำลังทำ" },
             { key: "done",        label: "รอตรวจสอบ" },
             { key: "approved",    label: "เสร็จแล้ว" },
           ] as const).map(({ key, label }) => (
-            <Button
+            <button
               key={key}
-              size="sm"
-              variant={filter === key ? "default" : "outline"}
               onClick={() => {
                 setFilter(key as any);
                 if (key === "team") setTeamSubFilter("waiting");
@@ -456,7 +589,11 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                 setSeenCounts(updated);
                 localStorage.setItem("task_tab_seen", JSON.stringify(updated));
               }}
-              className="relative"
+              className={`relative px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                filter === key
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              }`}
             >
               {label}
               {tabCounts[key] > (seenCounts[key] ?? 0) && filter !== key && (
@@ -464,13 +601,16 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
                   {(tabCounts[key] - (seenCounts[key] ?? 0)) > 99 ? "99+" : tabCounts[key] - (seenCounts[key] ?? 0)}
                 </span>
               )}
-            </Button>
+            </button>
           ))}
         </div>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5" onClick={() => setShowCreate(true)}>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors"
+        >
           <Plus className="w-4 h-4" />
           สร้างงาน
-        </Button>
+        </button>
       </div>
 
       {/* Sub-filter งานของทีม */}
@@ -499,116 +639,162 @@ export function TasksTab({ goToCustomer, pendingTaskId, clearPendingTask }: Task
 
       <div className="grid gap-3">
         {displayTasks.length === 0 && (
-          <Card className="p-8 text-center text-sm text-muted-foreground">
+          <div className="py-12 text-center text-sm text-gray-400">
             {searchQuery.trim() ? `ไม่พบงานที่ตรงกับ "${searchQuery}"` : "ไม่มีงานในหมวดนี้"}
-          </Card>
+          </div>
         )}
         {displayTasks.map((t) => {
-          const assignee = t.assigned_to ? profileMap[t.assigned_to] : null;
-          const creator = t.created_by ? profileMap[t.created_by] : null;
-          const customer = t.customer_id ? customerMap[t.customer_id] : null;
-          const isMine = t.assigned_to === user?.id;
+          const assignee    = t.assigned_to ? profileMap[t.assigned_to] : null;
+          const customer    = t.customer_id ? customerMap[t.customer_id] : null;
+          const isMine      = t.assigned_to === user?.id;
           const isMyTeamTask = !!t.team_id && myTeams.some((mt) => mt.id === t.team_id);
+          const isTeamWaiting = !!t.team_id && t.status === "open" && !t.assigned_to && !isTeamTaskExpired(t);
+          const statusBadgeColor = isTeamWaiting
+            ? "bg-orange-50 text-orange-600 border-orange-200"
+            : statusColor[t.status] ?? "bg-gray-50 text-gray-600 border-gray-200";
+          const statusBadgeLabel = isTeamWaiting ? "รอรับงาน" : (statusLabel[t.status] ?? t.status);
+
           return (
-            <Card
-              key={t.id}
-              className="p-4 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedTask(t)}
-            >
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold">{t.title}</h3>
-                    {/* รอรับงาน = open + ทีม + ยังไม่หมดเวลา, งานอิสระ = open + ไม่มีทีม หรือหมดเวลาแล้ว */}
-                    {t.status === "open" && t.team_id && !t.assigned_to && !isTeamTaskExpired(t) ? (
-                      <>
-                        <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300">รอรับงาน</Badge>
-                        {teamTaskCountdown(t) && (
-                          <Badge className="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 font-mono tabular-nums">
-                            ⏳ {teamTaskCountdown(t)}
-                          </Badge>
-                        )}
-                      </>
-                    ) : (
-                      <Badge className={statusColor[t.status]}>{statusLabel[t.status]}</Badge>
-                    )}
-                  </div>
-                  {t.description && <p className="text-sm text-muted-foreground mt-1">{renderDescription(t.description)}</p>}
-                  <div className="text-xs text-muted-foreground mt-2 flex gap-3 flex-wrap items-center">
+            <div key={t.id} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+
+              {/* Top badges */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                {t.work_type && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+                    {t.work_type}
+                  </span>
+                )}
+                {t.job_id && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                    JOB ID: {t.job_id}
+                  </span>
+                )}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeColor}`}>
+                  {statusBadgeLabel}
+                </span>
+                {!t.assigned_to && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-500 border border-rose-200">
+                    ยังไม่ได้รับ
+                  </span>
+                )}
+                {isTeamWaiting && teamTaskCountdown(t) && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-red-50 text-red-500 border border-red-200">
+                    ⏳ {teamTaskCountdown(t)}
+                  </span>
+                )}
+              </div>
+
+              {/* Title */}
+              <h3 className="font-bold text-gray-900 text-[15px] mb-3 leading-snug">{t.title}</h3>
+
+              {/* Info grid */}
+              {(customer || t.company_name || t.phone || t.business_type || t.address || t.ref_number) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 mb-3 text-sm text-gray-600">
+                  <div className="space-y-1">
                     {customer && (
-                      <span className="flex items-center gap-1 bg-sky-100 text-sky-700 font-semibold px-2 py-0.5 rounded-full">
-                        👤 {customer.display_name || "ไม่ระบุชื่อ"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <User className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span>ชื่อลูกค้า: <span className="font-medium text-gray-800">{customer.display_name || "ไม่ระบุชื่อ"}</span></span>
+                      </div>
                     )}
-                    <span className="flex items-center gap-1">
-                      🕐 รับงาน {format(new Date(t.created_at), "d MMM yyyy HH:mm น.", { locale: th })}
-                    </span>
-                    {creator && <span>โดย: {creator.display_name || creator.email}</span>}
-                    {t.due_date && <span>กำหนดส่ง: {new Date(t.due_date).toLocaleString("th-TH")}</span>}
+                    {t.company_name && (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span>{t.company_name}</span>
+                      </div>
+                    )}
+                    {t.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span>{t.phone}</span>
+                      </div>
+                    )}
+                    {t.business_type && (
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span>ประเภท: {t.business_type}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
-                  {assignee ? (
-                    <div className="flex items-center gap-2 text-sm text-green-700">
-                      <UserCheck className="w-4 h-4" />
-                      <span>{assignee.display_name || assignee.email}</span>
-                    </div>
-                  ) : (
-                    <Badge variant="outline" className="text-slate-500">ยังไม่มีคนรับ</Badge>
-                  )}
-                  <div className="flex gap-2 flex-wrap justify-end">
-                    {!t.assigned_to && t.status === "open" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-blue-300 text-blue-700 hover:bg-blue-50"
-                        onClick={() => { setClaimingTaskId(t.id); setClaimWorkType("solo"); }}
-                      >
-                        รับงาน
-                      </Button>
+                  <div className="space-y-1">
+                    {t.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-3.5 h-3.5 shrink-0 text-gray-400 mt-0.5" />
+                        <span className="leading-snug">{t.address}</span>
+                      </div>
                     )}
-                    {(isMine || isMyTeamTask) && !!t.assigned_to && (
-                      <div className="flex items-center gap-1.5">
-                        {(t.status === "done" || (t.status as string) === "approved" || t.status === "cancelled") ? (
-                          <Badge variant="outline" className={
-                            (t.status as string) === "approved"
-                              ? "bg-green-50 text-green-700 border-green-300"
-                              : t.status === "cancelled"
-                              ? "bg-gray-100 text-gray-500 border-gray-300"
-                              : "bg-amber-50 text-amber-700 border-amber-300"
-                          }>
-                            {(t.status as string) === "approved" ? "ผ่านแล้ว" : t.status === "cancelled" ? "ยกเลิกแล้ว" : "รอแอดมินตรวจสอบ"}
-                          </Badge>
-                        ) : (
-                        <Select
-                          value={t.status}
-                          onValueChange={(v) => {
-                            if (v === "done") {
-                              setSubmitReviewTask({ id: t.id, title: t.title });
-                            } else if (v === "cancelled") {
-                              setCancelTask({ id: t.id, title: t.title });
-                              setCancelReason("");
-                            } else {
-                              setPendingStatus({ id: t.id, status: v as Status });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-[130px] h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(["in_progress", "done", "cancelled"] as Status[]).map((s) => (
-                              <SelectItem key={s} value={s}>{statusSelectLabel[s]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        )}
+                    {t.ref_number && (
+                      <div className="flex items-center gap-2">
+                        <Hash className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                        <span>เลขที่อ้างอิง: <span className="font-mono font-medium text-gray-700">{t.ref_number}</span></span>
                       </div>
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Description */}
+              {t.description && (
+                <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 text-sm text-gray-600 leading-relaxed mb-3 line-clamp-3">
+                  {t.description}
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-xs text-gray-400">
+                  {assignee && (
+                    <span>รับงานโดย <span className="font-medium text-gray-600">{assignee.display_name || assignee.email}</span> · </span>
+                  )}
+                  {format(new Date(t.created_at), "d MMM yyyy, HH:mm น.", { locale: th })}
+                </div>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setSelectedTask(t)}
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    ดูรายละเอียด
+                  </button>
+                  {!t.assigned_to && t.status === "open" && (
+                    <button
+                      onClick={() => { setClaimingTaskId(t.id); setClaimWorkType("solo"); }}
+                      className="px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-medium transition-colors"
+                    >
+                      รับงาน
+                    </button>
+                  )}
+                  {(isMine || isMyTeamTask) && !!t.assigned_to && t.status === "in_progress" && (
+                    <Select
+                      value={t.status}
+                      onValueChange={(v) => {
+                        if (v === "done") setSubmitReviewTask({ id: t.id, title: t.title });
+                        else if (v === "cancelled") { setCancelTask({ id: t.id, title: t.title }); setCancelReason(""); }
+                        else setPendingStatus({ id: t.id, status: v as Status });
+                      }}
+                    >
+                      <SelectTrigger className="w-[120px] h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["in_progress", "done", "cancelled"] as Status[]).map((s) => (
+                          <SelectItem key={s} value={s}>{statusSelectLabel[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {(isMine || isMyTeamTask) && !!t.assigned_to && (t.status === "done" || (t.status as string) === "approved" || t.status === "cancelled") && (
+                    <span className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border ${
+                      (t.status as string) === "approved" ? "bg-green-50 text-green-700 border-green-200" :
+                      t.status === "cancelled" ? "bg-gray-50 text-gray-500 border-gray-200" :
+                      "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {(t.status as string) === "approved" ? "ผ่านแล้ว" : t.status === "cancelled" ? "ยกเลิกแล้ว" : "รอแอดมินตรวจสอบ"}
+                    </span>
+                  )}
+                </div>
               </div>
-            </Card>
+
+            </div>
           );
         })}
       </div>

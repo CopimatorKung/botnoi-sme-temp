@@ -476,8 +476,8 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
     const passRate = teamTasks.length > 0 ? Math.round((doneTasks.length / teamTasks.length) * 100) : 0;
 
     const RANGE_LABELS: Record<string, string> = {
-      "1w": "1 สัปดาห์", "1m": "1 เดือน", "3m": "3 เดือน",
-      "6m": "6 เดือน", "1y": "1 ปี", "custom": "กำหนดเอง",
+      "1w": "1 ส.", "1m": "1 ด.", "3m": "3 ด.",
+      "6m": "6 ด.", "1y": "1 ปี", "custom": "กำหนด",
     };
 
     const DETAIL_TABS = [
@@ -533,11 +533,11 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                 { label: "กำลังทำ", value: activeTasks.length, icon: Clock, color: "text-amber-500" },
                 { label: "รอรับ", value: waitingTasks.length, icon: Briefcase, color: "text-gray-400" },
               ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-center gap-3">
-                  <s.icon className={`w-5 h-5 ${s.color} shrink-0`} />
+                <div key={s.label} className="rounded-xl border border-gray-200 bg-gray-50 px-2 py-2.5 flex items-center gap-2">
+                  <s.icon className={`w-4 h-4 ${s.color} shrink-0`} />
                   <div>
-                    <p className="text-xl font-bold text-gray-900">{s.value}</p>
-                    <p className="text-xs text-gray-500">{s.label}</p>
+                    <p className="text-base font-bold text-gray-900 leading-tight">{s.value}</p>
+                    <p className="text-[11px] text-gray-500 leading-tight">{s.label}</p>
                   </div>
                 </div>
               ))}
@@ -600,33 +600,33 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
             </div>
             <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
               <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">สมาชิกในทีม</h3>
-                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{teamMembers.length} คน</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <h3 className="font-semibold text-gray-900 whitespace-nowrap">สมาชิกในทีม</h3>
+                  <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">{teamMembers.length} คน</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => setShowMemberStats((v) => !v)}
-                    className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                    title="รายละเอียด"
+                    className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${
                       showMemberStats
                         ? "bg-blue-50 border-blue-200 text-blue-600"
                         : "bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
                     }`}
                   >
-                    <BarChart2 className="w-3.5 h-3.5" />
-                    รายละเอียด
+                    <BarChart2 className="w-4 h-4" />
                   </button>
                   {canEdit && (
                     <button
                       onClick={() => setMemberEditMode((v) => !v)}
-                      className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${
+                      title="แก้ไขสมาชิก"
+                      className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${
                         memberEditMode
                           ? "bg-amber-50 border-amber-200 text-amber-600"
                           : "bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700"
                       }`}
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                      แก้ไขสมาชิก
+                      <Pencil className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -876,7 +876,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
                   แนวโน้มงานตามช่วงเวลา
                   <span className="ml-1.5 text-xs font-normal text-gray-400">· {totalInRange} งาน</span>
                 </h4>
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+                <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5 overflow-x-auto scrollbar-none">
                   {(["1w","1m","3m","6m","1y","custom"] as const).map((r) => (
                     <button key={r} onClick={() => setChartRange(r)}
                       className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
@@ -1003,7 +1003,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
 
         {/* Invite dialog */}
         <Dialog open={!!inviteDialogTeamId} onOpenChange={(o) => { if (!o) { setInviteDialogTeamId(null); setSelectedUserId(""); setInviteSearch(""); } }}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[90vw] max-w-md">
             <DialogHeader><DialogTitle>เพิ่มสมาชิก — {inviteTeam?.name ?? team.name}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="relative">
@@ -1067,7 +1067,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
           };
           return (
             <Dialog open onOpenChange={(o) => { if (!o) setContribLogMember(null); }}>
-              <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+              <DialogContent className="w-[90vw] max-w-md max-h-[80vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>{contribLogMember.name}'s งาน</DialogTitle>
                 </DialogHeader>
@@ -1161,7 +1161,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
         <UserProfileViewDialog userId={viewingUserId} open={!!viewingUserId} onOpenChange={(o) => { if (!o) setViewingUserId(null); }} />
 
         <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditTeam(null); } }}>
-          <DialogContent className="sm:max-w-sm">
+          <DialogContent className="w-[90vw] max-w-sm">
             <DialogHeader><DialogTitle>แก้ไขทีม</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div>
@@ -1235,20 +1235,19 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="ค้นหาทีม หรือคำอธิบาย..."
+            placeholder="ค้นหาทีม..."
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="h-10 w-full pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+            className="h-9 w-full pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
           />
         </div>
 
         {/* Filter dropdown */}
         <Select value={filterTag} onValueChange={(v) => { setFilterTag(v); setCurrentPage(1); }}>
-          <SelectTrigger className="h-10 w-36 rounded-xl border-gray-200 text-sm gap-2">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <SelectValue />
+          <SelectTrigger className={`h-9 w-9 rounded-xl border-gray-200 shrink-0 p-0 justify-center [&>span]:hidden [&>svg:last-child]:hidden ${filterTag !== "all" ? "border-blue-400 bg-blue-50" : ""}`}>
+            <SlidersHorizontal className={`w-4 h-4 shrink-0 ${filterTag !== "all" ? "text-blue-500" : "text-gray-400"}`} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-56 overflow-y-auto">
             <SelectItem value="all">ทั้งหมด</SelectItem>
             <SelectItem value="mine">ทีมของฉัน</SelectItem>
             {allTags.length > 0 && (
@@ -1261,20 +1260,20 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
         </Select>
 
         {/* View toggle */}
-        <div className="flex items-center rounded-xl border border-gray-200 bg-white p-0.5 shrink-0">
+        <div className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5 shrink-0">
           <button
             onClick={() => setViewMode("large")}
-            className={`p-2 rounded-lg transition-colors ${viewMode === "large" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-600"}`}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === "large" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-600"}`}
             title="มุมมองการ์ด"
           >
-            <LayoutGrid className="w-4 h-4" />
+            <LayoutGrid className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setViewMode("small")}
-            className={`p-2 rounded-lg transition-colors ${viewMode === "small" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-600"}`}
+            className={`p-1.5 rounded-md transition-colors ${viewMode === "small" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-600"}`}
             title="มุมมองรายการ"
           >
-            <List className="w-4 h-4" />
+            <List className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -1475,7 +1474,7 @@ export function TeamsTab({ initialTeamId, clearInitialTeam }: TeamsTabProps) {
 
       {/* Create dialog */}
       <Dialog open={createOpen} onOpenChange={(o) => { if (!o) { setCreateOpen(false); setNewName(""); setNewDesc(""); setNewTag(""); setNewLogoPreview(null); } }}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="w-[90vw] max-w-sm">
           <DialogHeader><DialogTitle>สร้างทีมใหม่</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3">

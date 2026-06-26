@@ -50,12 +50,9 @@ const getTaskBadge = (t: Task): { label: string; color: string; dot: string } =>
   return MAP[t.status] ?? { label: t.status, color: "bg-slate-50 text-slate-500 border-slate-200", dot: "bg-slate-300" };
 };
 
-const STATUS_PRIORITY: Record<string, number> = {
-  in_progress: 1, open: 2, done: 3, approved: 4, cancelled: 5,
-};
 
 type FilterKey = "open_free" | "open_team" | "in_progress" | "done" | "approved" | "pending_cancel" | "cancelled";
-type SortKey = "newest" | "oldest" | "title_az" | "title_za" | "status_active" | "status_done" | "wait_first" | "assignee_az" | "assignee_za" | "due_soonest" | "due_latest" | "priority_high" | "priority_low";
+type SortKey = "newest" | "oldest" | "title_az" | "title_za" | "due_soonest" | "due_latest" | "priority_high" | "priority_low";
 
 const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, normal: 2 };
 
@@ -65,26 +62,21 @@ const FILTER_CHIPS: { key: FilterKey; label: string; activeColor: string; defaul
   { key: "in_progress",    label: "กำลังทำ",         activeColor: "bg-yellow-100 text-yellow-700 border-yellow-300"    },
   { key: "done",           label: "รอตรวจสอบ",       activeColor: "bg-amber-100 text-amber-700 border-amber-300"       },
   { key: "approved",       label: "ผ่านแล้ว",        activeColor: "bg-green-100 text-green-700 border-green-300"       },
-  { key: "pending_cancel", label: "รอยืนยันยกเลิก", activeColor: "bg-rose-100 text-rose-600 border-rose-300",
-                                                       defaultColor: "bg-white text-rose-400 border-rose-200 hover:bg-rose-50" },
+  { key: "pending_cancel", label: "รอยกเลิก", activeColor: "bg-rose-100 text-rose-600 border-rose-300",
+                                               defaultColor: "bg-white text-rose-400 border-rose-200 hover:bg-rose-50" },
   { key: "cancelled",      label: "ยกเลิกแล้ว",     activeColor: "bg-slate-100 text-slate-600 border-slate-300",
                                                        defaultColor: "bg-white text-slate-400 border-slate-200 hover:bg-slate-50" },
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string; group: string }[] = [
-  { value: "newest",        label: "ล่าสุด",          group: "วันที่สร้าง"   },
-  { value: "oldest",        label: "เก่าสุด",          group: "วันที่สร้าง"   },
-  { value: "due_soonest",   label: "ใกล้ครบกำหนด",    group: "วันครบกำหนด"  },
-  { value: "due_latest",    label: "ไกลครบกำหนด",     group: "วันครบกำหนด"  },
-  { value: "priority_high", label: "ด่วน → ปกติ",     group: "ความสำคัญ"    },
-  { value: "priority_low",  label: "ปกติ → ด่วน",     group: "ความสำคัญ"    },
-  { value: "status_active", label: "กำลังดำเนินการ",   group: "สถานะ"  },
-  { value: "status_done",   label: "เสร็จแล้ว",        group: "สถานะ"  },
-  { value: "wait_first",    label: "รอรับงาน",          group: "สถานะ"  },
-  { value: "assignee_az",   label: "ผู้รับงาน A → Z",   group: "ตัวอักษร" },
-  { value: "assignee_za",   label: "ผู้รับงาน Z → A",   group: "ตัวอักษร" },
-  { value: "title_az",      label: "ชื่องาน A → Z",      group: "ตัวอักษร" },
-  { value: "title_za",      label: "ชื่องาน Z → A",      group: "ตัวอักษร" },
+  { value: "newest",        label: "ล่าสุด",        group: "วันที่สร้าง"  },
+  { value: "oldest",        label: "เก่าสุด",        group: "วันที่สร้าง"  },
+  { value: "due_soonest",   label: "ใกล้ครบกำหนด",  group: "วันครบกำหนด" },
+  { value: "due_latest",    label: "ไกลครบกำหนด",   group: "วันครบกำหนด" },
+  { value: "priority_high", label: "ด่วน → ปกติ",   group: "ความสำคัญ"   },
+  { value: "priority_low",  label: "ปกติ → ด่วน",   group: "ความสำคัญ"   },
+  { value: "title_az",      label: "ชื่องาน A → Z",  group: "ตัวอักษร"    },
+  { value: "title_za",      label: "ชื่องาน Z → A",  group: "ตัวอักษร"    },
 ];
 
 const matchStatusFilter = (t: Task, key: FilterKey): boolean => {
@@ -157,16 +149,8 @@ export function AllTasksTab() {
   const [statusFilter, setStatusFilter]         = useState<FilterKey | null>(null);
   const [showAdvanced, setShowAdvanced]         = useState(false);
   const [smeFilter, setSmeFilter]               = useState("__all__");
-  const [teamFilter, setTeamFilter]             = useState("__all__");
-  const [assigneeFilter, setAssigneeFilter]     = useState("__all__");
-  const [assigneeSearch, setAssigneeSearch]     = useState("");
-  const [assigneeOpen, setAssigneeOpen]         = useState(false);
-  const [creatorFilter, setCreatorFilter]       = useState("__all__");
-  const [creatorSearch, setCreatorSearch]       = useState("");
-  const [creatorOpen, setCreatorOpen]           = useState(false);
   const [priorityFilter, setPriorityFilter]     = useState<Priority | "__all__">("__all__");
   const [dueDateRange, setDueDateRange]         = useState<"__all__" | "overdue" | "today" | "week" | "month" | "none">("__all__");
-  const [assignmentFilter, setAssignmentFilter] = useState<"__all__" | "assigned" | "unassigned">("__all__");
   const [sortKey, setSortKey]                   = useState<SortKey>("newest");
   const [sortPopoverOpen, setSortPopoverOpen]   = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
@@ -408,45 +392,23 @@ export function AllTasksTab() {
     () => [...new Set(tasks.map((t) => extractSme(t.description)).filter(Boolean))] as string[],
     [tasks]
   );
-  const assigneeOptions = useMemo(() => {
-    const ids = [...new Set(tasks.map((t) => t.assigned_to).filter(Boolean))] as string[];
-    return ids.map((id) => profileMap[id]).filter(Boolean);
-  }, [tasks, profileMap]);
-  const creatorOptions = useMemo(() => {
-    const ids = [...new Set(tasks.map((t) => t.created_by).filter(Boolean))] as string[];
-    return ids.map((id) => profileMap[id]).filter(Boolean);
-  }, [tasks, profileMap]);
-  const teamOptions = useMemo(() => {
-    const ids = [...new Set(tasks.map((t) => t.team_id).filter(Boolean))] as string[];
-    return ids.map((id) => teamMap[id]).filter(Boolean);
-  }, [tasks, teamMap]);
 
-  const advancedActive = smeFilter !== "__all__" || teamFilter !== "__all__" || assigneeFilter !== "__all__" || creatorFilter !== "__all__" || priorityFilter !== "__all__" || dueDateRange !== "__all__" || assignmentFilter !== "__all__";
+  const advancedActive = smeFilter !== "__all__" || priorityFilter !== "__all__" || dueDateRange !== "__all__";
   const resetAdvanced = () => {
-    setSmeFilter("__all__"); setTeamFilter("__all__"); setAssigneeFilter("__all__"); setAssigneeSearch("");
-    setCreatorFilter("__all__"); setCreatorSearch(""); setPriorityFilter("__all__"); setDueDateRange("__all__"); setAssignmentFilter("__all__");
+    setSmeFilter("__all__"); setPriorityFilter("__all__"); setDueDateRange("__all__");
     setCurrentPage(1);
   };
-  const changeStatus     = (v: FilterKey | null) => { setStatusFilter(v); setCurrentPage(1); };
-  const changeSearch     = (v: string) => { setSearch(v); setCurrentPage(1); };
-  const changeSort       = (v: SortKey) => { setSortKey(v); setCurrentPage(1); };
-  const changeSme        = (v: string) => { setSmeFilter(v); setCurrentPage(1); };
-  const changeTeam       = (v: string) => { setTeamFilter(v); setCurrentPage(1); };
-  const changeAssignee   = (v: string) => { setAssigneeFilter(v); setCurrentPage(1); };
-  const changeCreator    = (v: string) => { setCreatorFilter(v); setCurrentPage(1); };
-  const changePriority   = (v: string) => { setPriorityFilter(v as Priority | "__all__"); setCurrentPage(1); };
-  const changeDueRange   = (v: string) => { setDueDateRange(v as typeof dueDateRange); setCurrentPage(1); };
-  const changeAssignment = (v: string) => { setAssignmentFilter(v as typeof assignmentFilter); setCurrentPage(1); };
+  const changeStatus   = (v: FilterKey | null) => { setStatusFilter(v); setCurrentPage(1); };
+  const changeSearch   = (v: string) => { setSearch(v); setCurrentPage(1); };
+  const changeSort     = (v: SortKey) => { setSortKey(v); setCurrentPage(1); };
+  const changeSme      = (v: string) => { setSmeFilter(v); setCurrentPage(1); };
+  const changePriority = (v: string) => { setPriorityFilter(v as Priority | "__all__"); setCurrentPage(1); };
+  const changeDueRange = (v: string) => { setDueDateRange(v as typeof dueDateRange); setCurrentPage(1); };
 
   const filtered = tasks.filter((t) => {
     if (statusFilter && !matchStatusFilter(t, statusFilter)) return false;
     if (smeFilter !== "__all__" && extractSme(t.description) !== smeFilter) return false;
-    if (teamFilter !== "__all__" && t.team_id !== teamFilter) return false;
-    if (assigneeFilter !== "__all__" && t.assigned_to !== assigneeFilter) return false;
-    if (creatorFilter !== "__all__" && t.created_by !== creatorFilter) return false;
     if (priorityFilter !== "__all__" && (t.priority ?? "normal") !== priorityFilter) return false;
-    if (assignmentFilter === "assigned"   && !t.assigned_to) return false;
-    if (assignmentFilter === "unassigned" && !!t.assigned_to) return false;
     if (dueDateRange !== "__all__") {
       const today     = new Date().toISOString().slice(0, 10);
       const weekLater = new Date(Date.now() + 7  * 86400000).toISOString().slice(0, 10);
@@ -472,8 +434,6 @@ export function AllTasksTab() {
     if (sortKey === "oldest")        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     if (sortKey === "title_az")      return a.title.localeCompare(b.title, "th");
     if (sortKey === "title_za")      return b.title.localeCompare(a.title, "th");
-    if (sortKey === "status_active") return (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9);
-    if (sortKey === "status_done")   return (STATUS_PRIORITY[b.status] ?? 9) - (STATUS_PRIORITY[a.status] ?? 9);
     if (sortKey === "due_soonest") {
       if (!a.due_date && !b.due_date) return 0;
       if (!a.due_date) return 1;
@@ -488,16 +448,6 @@ export function AllTasksTab() {
     }
     if (sortKey === "priority_high") return (PRIORITY_ORDER[a.priority ?? "normal"] ?? 2) - (PRIORITY_ORDER[b.priority ?? "normal"] ?? 2);
     if (sortKey === "priority_low")  return (PRIORITY_ORDER[b.priority ?? "normal"] ?? 2) - (PRIORITY_ORDER[a.priority ?? "normal"] ?? 2);
-    if (sortKey === "wait_first") {
-      const aWait = a.status === "open" && !!a.team_id && !a.assigned_to && !isTeamTaskExpired(a) ? 0 : 1;
-      const bWait = b.status === "open" && !!b.team_id && !b.assigned_to && !isTeamTaskExpired(b) ? 0 : 1;
-      return aWait - bWait;
-    }
-    if (sortKey === "assignee_az" || sortKey === "assignee_za") {
-      const na = (a.assigned_to ? (profileMap[a.assigned_to]?.display_name || profileMap[a.assigned_to]?.email || "") : "ๆ");
-      const nb = (b.assigned_to ? (profileMap[b.assigned_to]?.display_name || profileMap[b.assigned_to]?.email || "") : "ๆ");
-      return sortKey === "assignee_az" ? na.localeCompare(nb, "th") : nb.localeCompare(na, "th");
-    }
     return 0;
   });
 
@@ -556,7 +506,7 @@ export function AllTasksTab() {
             ตัวกรอง
             {advancedActive && (
               <span className="bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {[smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length}
+                {[smeFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__"].filter(Boolean).length}
               </span>
             )}
             <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showAdvanced ? "rotate-180" : ""}`} />
@@ -600,9 +550,9 @@ export function AllTasksTab() {
                       <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 ml-1 transition-transform duration-150 ${sortPopoverOpen ? "rotate-180" : ""}`} />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-52 p-2" align="start">
+                  <PopoverContent className="w-52 p-2 max-h-64 overflow-y-auto" align="start">
                     <RadioGroup value={sortKey} onValueChange={(v) => { changeSort(v as SortKey); setSortPopoverOpen(false); }}>
-                      {["วันที่สร้าง", "วันครบกำหนด", "ความสำคัญ", "สถานะ", "ตัวอักษร"].map((group) => {
+                      {["วันที่สร้าง", "วันครบกำหนด", "ความสำคัญ", "ตัวอักษร"].map((group) => {
                         const opts = SORT_OPTIONS.filter((o) => o.group === group);
                         if (!opts.length) return null;
                         return (
@@ -629,23 +579,9 @@ export function AllTasksTab() {
                   <SelectTrigger className="h-8 text-xs bg-white border-gray-200">
                     <SelectValue placeholder="ทั้งหมด" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-56 overflow-y-auto">
                     <SelectItem value="__all__">ทั้งหมด</SelectItem>
                     {smeOptions.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Team */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">ทีม</label>
-                <Select value={teamFilter} onValueChange={changeTeam}>
-                  <SelectTrigger className="h-8 text-xs bg-white border-gray-200">
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">ทั้งหมด</SelectItem>
-                    {teamOptions.map((tm) => tm && <SelectItem key={tm.id} value={tm.id}>{tm.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -666,88 +602,6 @@ export function AllTasksTab() {
                 </Select>
               </div>
 
-              {/* Assignee */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">ผู้รับงาน</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={assigneeFilter === "__all__" ? "ทั้งหมด" : (profileMap[assigneeFilter]?.display_name || profileMap[assigneeFilter]?.email || "ทั้งหมด")}
-                    value={assigneeSearch}
-                    onChange={(e) => { setAssigneeSearch(e.target.value); setAssigneeOpen(true); }}
-                    onFocus={() => setAssigneeOpen(true)}
-                    onBlur={() => setTimeout(() => setAssigneeOpen(false), 150)}
-                    className="w-full h-8 pl-3 pr-7 rounded-md border border-gray-200 bg-white text-xs outline-none focus:border-blue-400 transition"
-                  />
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  {assigneeOpen && (
-                    <div className="absolute z-50 top-full mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-48 overflow-y-auto">
-                      <button type="button"
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${assigneeFilter === "__all__" ? "font-semibold text-blue-600" : ""}`}
-                        onMouseDown={() => { changeAssignee("__all__"); setAssigneeSearch(""); setAssigneeOpen(false); }}>
-                        ทั้งหมด
-                      </button>
-                      {assigneeOptions
-                        .filter((p) => !assigneeSearch.trim() || (p?.display_name || p?.email || "").toLowerCase().includes(assigneeSearch.toLowerCase()))
-                        .map((p) => p && (
-                          <button key={p.id} type="button"
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors flex items-center gap-2 ${assigneeFilter === p.id ? "font-semibold text-blue-600" : ""}`}
-                            onMouseDown={() => { changeAssignee(p.id); setAssigneeSearch(""); setAssigneeOpen(false); }}>
-                            <Avatar className="w-5 h-5 shrink-0">
-                              <AvatarImage src={p.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[8px] bg-blue-100 text-blue-600">
-                                {(p.display_name || p.email || "?")[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {p.display_name || p.email}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Creator (ผู้ส่งงาน) */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">ผู้ส่งงาน</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={creatorFilter === "__all__" ? "ทั้งหมด" : (profileMap[creatorFilter]?.display_name || profileMap[creatorFilter]?.email || "ทั้งหมด")}
-                    value={creatorSearch}
-                    onChange={(e) => { setCreatorSearch(e.target.value); setCreatorOpen(true); }}
-                    onFocus={() => setCreatorOpen(true)}
-                    onBlur={() => setTimeout(() => setCreatorOpen(false), 150)}
-                    className="w-full h-8 pl-3 pr-7 rounded-md border border-gray-200 bg-white text-xs outline-none focus:border-blue-400 transition"
-                  />
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  {creatorOpen && (
-                    <div className="absolute z-50 top-full mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-48 overflow-y-auto">
-                      <button type="button"
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${creatorFilter === "__all__" ? "font-semibold text-blue-600" : ""}`}
-                        onMouseDown={() => { changeCreator("__all__"); setCreatorSearch(""); setCreatorOpen(false); }}>
-                        ทั้งหมด
-                      </button>
-                      {creatorOptions
-                        .filter((p) => !creatorSearch.trim() || (p?.display_name || p?.email || "").toLowerCase().includes(creatorSearch.toLowerCase()))
-                        .map((p) => p && (
-                          <button key={p.id} type="button"
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors flex items-center gap-2 ${creatorFilter === p.id ? "font-semibold text-blue-600" : ""}`}
-                            onMouseDown={() => { changeCreator(p.id); setCreatorSearch(""); setCreatorOpen(false); }}>
-                            <Avatar className="w-5 h-5 shrink-0">
-                              <AvatarImage src={p.avatar_url ?? undefined} />
-                              <AvatarFallback className="text-[8px] bg-violet-100 text-violet-600">
-                                {(p.display_name || p.email || "?")[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {p.display_name || p.email}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Due date range */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">วันครบกำหนด</label>
@@ -766,21 +620,6 @@ export function AllTasksTab() {
                 </Select>
               </div>
 
-              {/* Assignment status */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">การมอบหมาย</label>
-                <Select value={assignmentFilter} onValueChange={changeAssignment}>
-                  <SelectTrigger className="h-8 text-xs bg-white border-gray-200">
-                    <SelectValue placeholder="ทั้งหมด" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">ทั้งหมด</SelectItem>
-                    <SelectItem value="assigned">มีผู้รับงานแล้ว</SelectItem>
-                    <SelectItem value="unassigned">ยังไม่มีผู้รับงาน</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
             </div>
           </div>
         )}
@@ -792,7 +631,7 @@ export function AllTasksTab() {
           <p className="text-xs text-gray-400">
             {anyFilterActive ? `แสดง ${sorted.length} จาก ${tasks.length} รายการ` : `${tasks.length} รายการทั้งหมด`}
             {advancedActive && (() => {
-              const n = [smeFilter !== "__all__", teamFilter !== "__all__", assigneeFilter !== "__all__", creatorFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__", assignmentFilter !== "__all__"].filter(Boolean).length;
+              const n = [smeFilter !== "__all__", priorityFilter !== "__all__", dueDateRange !== "__all__"].filter(Boolean).length;
               return n > 0 ? <span className="ml-1.5 text-gray-300">• กรอง {n} เงื่อนไข</span> : null;
             })()}
           </p>
@@ -849,22 +688,10 @@ export function AllTasksTab() {
                         <Users className="w-3 h-3" />{team.name}
                       </span>
                     )}
-                    {!team && t.assigned_to && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-50 text-slate-500 border border-slate-200">
-                        <User className="w-3 h-3" />งานเดี่ยว
-                      </span>
-                    )}
                     <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${cfg.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                       {cfg.label}
                     </span>
-                    {t.due_date && (
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${overdue ? "bg-red-50 text-red-500 border-red-200" : "bg-gray-50 text-gray-500 border-gray-200"}`}>
-                        <CalendarClock className="w-3 h-3" />
-                        {t.due_date}
-                        {overdue && <span className="ml-0.5">· เกินกำหนด</span>}
-                      </span>
-                    )}
                   </div>
 
                   {/* Description — 2 line clamp */}
@@ -874,10 +701,19 @@ export function AllTasksTab() {
                     </div>
                   )}
 
-                  {/* Date */}
-                  <div className="flex items-center gap-1 text-[11px] text-gray-400">
-                    <Clock className="w-3 h-3" />
-                    {format(new Date(t.created_at), "d MMM yyyy, HH:mm น.", { locale: th })}
+                  {/* Meta row */}
+                  <div className="flex items-center gap-3 text-[11px] text-gray-400 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {format(new Date(t.created_at), "d MMM yyyy, HH:mm น.", { locale: th })}
+                    </span>
+                    {t.due_date && (
+                      <span className={`flex items-center gap-1 ${overdue ? "text-red-500 font-medium" : ""}`}>
+                        <CalendarClock className="w-3 h-3" />
+                        {format(new Date(t.due_date), "d MMM yyyy", { locale: th })}
+                        {overdue && " · เกินกำหนด"}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -921,7 +757,7 @@ export function AllTasksTab() {
         const timelineIdx = getTimelineIndex(t);
         return (
           <Dialog open onOpenChange={(o) => { if (!o) setSelectedTask(null); }}>
-            <DialogContent className="max-w-lg" aria-describedby={undefined}>
+            <DialogContent className="w-[90vw] max-w-lg" aria-describedby={undefined}>
               <DialogHeader>
                 <DialogTitle className="text-base font-semibold leading-snug pr-4">{t.title}</DialogTitle>
               </DialogHeader>

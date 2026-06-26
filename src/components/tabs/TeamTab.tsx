@@ -8,8 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Check, X, ChevronDown, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, ChevronDown, Search, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { UserProfileViewDialog } from "@/components/UserProfileViewDialog";
 
 interface Member {
@@ -50,9 +51,10 @@ const ROLE_RING: Record<ActiveRole, string> = {
 export function TeamTab() {
   const { role, user } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
   const [view, setView] = useState<"active" | "pending">("active");
-  const [pendingApproval, setPendingApproval] = useState<{ uid: string; name: string; role: ActiveRole } | null>(null);
+  const [approveTarget, setApproveTarget] = useState<{ uid: string; name: string } | null>(null);
+  const [approveRole, setApproveRole] = useState<ActiveRole>("member");
+  const [rejectTarget, setRejectTarget] = useState<{ uid: string; name: string } | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [search, setSearch]         = useState("");
   const [roleFilter, setRoleFilter] = useState<ActiveRole | null>(null);
@@ -251,8 +253,8 @@ export function TeamTab() {
         </div>
         {view === "active" && (
           <Select value={roleFilter ?? "all"} onValueChange={(v) => { setRoleFilter(v === "all" ? null : v as ActiveRole); setCurrentPage(1); }}>
-            <SelectTrigger className="h-10 w-40 rounded-xl border-gray-200 text-sm gap-2 shrink-0">
-              <SelectValue />
+            <SelectTrigger className={`h-10 w-10 rounded-xl border-gray-200 shrink-0 p-0 justify-center [&>span]:hidden [&>svg:last-child]:hidden ${roleFilter ? "border-blue-400 bg-blue-50" : ""}`}>
+              <SlidersHorizontal className={`w-4 h-4 shrink-0 ${roleFilter ? "text-blue-500" : "text-gray-400"}`} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">ทั้งหมด</SelectItem>
@@ -294,7 +296,6 @@ export function TeamTab() {
         {paged.map((m) => {
           const activeRole = (["developer","ceo","admin","team_leader","member"] as ActiveRole[]).find((r) => m.roles.includes(r));
           const isPending  = m.roles.includes("pending") && !activeRole;
-          const isApproving = approvingId === m.id;
           const canEdit = isAdmin && m.id !== user?.id && !!activeRole;
           const roleOptions = activeRole ? getRoleOptions(activeRole) : [];
           const isMe = m.id === user?.id;
@@ -336,88 +337,66 @@ export function TeamTab() {
                 </p>
               </button>
 
-              {/* Role badge */}
-              <div className="flex items-center gap-2 shrink-0">
-                {activeRole && (
-                  canEdit && roleOptions.length > 0 ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 ${ROLE_STYLE[activeRole]}`}>
-                          {ROLE_LABEL[activeRole]} <ChevronDown className="w-3 h-3 opacity-70" />
+              {/* Role badge (active) */}
+              {activeRole && (
+                canEdit && roleOptions.length > 0 ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 ${ROLE_STYLE[activeRole]}`}>
+                        {ROLE_LABEL[activeRole]} <ChevronDown className="w-3 h-3 opacity-70" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-44 p-1.5">
+                      <p className="text-[10px] text-muted-foreground font-medium px-2 pb-1">เปลี่ยน role เป็น</p>
+                      {roleOptions.map((opt) => (
+                        <button key={opt.value} onClick={() => changeRole(m.id, activeRole, opt.value)}
+                          className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors">
+                          {opt.label}
                         </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-44 p-1.5">
-                        <p className="text-[10px] text-muted-foreground font-medium px-2 pb-1">เปลี่ยน role เป็น</p>
-                        {roleOptions.map((opt) => (
-                          <button key={opt.value} onClick={() => changeRole(m.id, activeRole, opt.value)}
-                            className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-muted transition-colors">
-                            {opt.label}
-                          </button>
-                        ))}
-                        <div className="border-t mt-1 pt-1">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button className="w-full text-left text-sm px-2 py-1.5 rounded text-red-500 hover:bg-red-50 transition-colors">เพิกถอน</button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>ยืนยันการลบผู้ใช้</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  การเพิกถอนจะ<strong>ลบข้อมูลทั้งหมด</strong>ของ <strong>{m.display_name || m.email}</strong> ออกจากระบบถาวร รวมถึง profile และสิทธิ์การเข้าถึงทั้งหมด ไม่สามารถกู้คืนได้
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                                <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => revoke(m.id)}>ยืนยันลบ</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  ) : (
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${ROLE_STYLE[activeRole]}`}>{ROLE_LABEL[activeRole]}</span>
-                  )
-                )}
-                {isPending && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-300">รออนุมัติ</span>
-                )}
-              </div>
+                      ))}
+                      <div className="border-t mt-1 pt-1">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button className="w-full text-left text-sm px-2 py-1.5 rounded text-red-500 hover:bg-red-50 transition-colors">เพิกถอน</button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>ยืนยันการลบผู้ใช้</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                การเพิกถอนจะ<strong>ลบข้อมูลทั้งหมด</strong>ของ <strong>{m.display_name || m.email}</strong> ออกจากระบบถาวร รวมถึง profile และสิทธิ์การเข้าถึงทั้งหมด ไม่สามารถกู้คืนได้
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                              <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={() => revoke(m.id)}>ยืนยันลบ</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${ROLE_STYLE[activeRole]}`}>{ROLE_LABEL[activeRole]}</span>
+                )
+              )}
 
-              {/* Pending: อนุมัติ / ไม่อนุมัติ */}
+              {/* Pending: approve / reject icon buttons */}
               {isPending && (isAdmin || isTeamLeader) && m.id !== user?.id && (
-                <div className="flex items-center gap-2 shrink-0">
-                  {isApproving ? (
-                    <>
-                      <Select onValueChange={(v) => setPendingApproval({ uid: m.id, name: m.display_name || m.email || "—", role: v as ActiveRole })}>
-                        <SelectTrigger className="h-8 w-40 text-xs border-blue-300 focus:ring-blue-400">
-                          <SelectValue placeholder="เลือก role..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="member">Member</SelectItem>
-                          {isAdmin && <SelectItem value="team_leader">Team Leader</SelectItem>}
-                          {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
-                          {isCEO  && <SelectItem value="ceo">CEO</SelectItem>}
-                          {isDeveloper && <SelectItem value="developer">Developer</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setApprovingId(null)}>
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button size="sm" className="h-8 bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-                        onClick={() => isTeamLeader ? approve(m.id, "member") : setApprovingId(m.id)}>
-                        <Check className="w-3.5 h-3.5" /> Approve
-                        {!isTeamLeader && <ChevronDown className="w-3 h-3 opacity-70" />}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-8 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 gap-1.5"
-                        onClick={() => reject(m.id)}>
-                        <X className="w-3.5 h-3.5" /> Reject
-                      </Button>
-                    </>
-                  )}
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    title="อนุมัติ"
+                    onClick={() => { setApproveRole("member"); setApproveTarget({ uid: m.id, name: m.display_name || m.email || "—" }); }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    title="ปฏิเสธ"
+                    onClick={() => setRejectTarget({ uid: m.id, name: m.display_name || m.email || "—" })}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
@@ -441,24 +420,56 @@ export function TeamTab() {
         onOpenChange={(o) => { if (!o) setViewingUserId(null); }}
       />
 
-      {/* Confirm approve dialog */}
-      <AlertDialog open={!!pendingApproval} onOpenChange={(o) => { if (!o) setPendingApproval(null); }}>
-        <AlertDialogContent>
+      {/* Approve dialog — เลือก role แล้วยืนยัน */}
+      <Dialog open={!!approveTarget} onOpenChange={(o) => { if (!o) setApproveTarget(null); }}>
+        <DialogContent className="w-[90vw] max-w-sm">
+          <DialogHeader>
+            <DialogTitle>อนุมัติสมาชิก</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-sm text-gray-600">
+              อนุมัติ <strong>{approveTarget?.name}</strong> ให้เข้าร่วมทีมในตำแหน่ง:
+            </p>
+            <Select value={approveRole} onValueChange={(v) => setApproveRole(v as ActiveRole)}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                {isAdmin && <SelectItem value="team_leader">Team Leader</SelectItem>}
+                {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
+                {isCEO   && <SelectItem value="ceo">CEO</SelectItem>}
+                {isDeveloper && <SelectItem value="developer">Developer</SelectItem>}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setApproveTarget(null)}>ยกเลิก</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => {
+              if (approveTarget) { approve(approveTarget.uid, approveRole); setApproveTarget(null); }
+            }}>
+              <Check className="w-3.5 h-3.5 mr-1.5" /> ยืนยันอนุมัติ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject dialog — ยืนยันก่อนปฏิเสธ */}
+      <AlertDialog open={!!rejectTarget} onOpenChange={(o) => { if (!o) setRejectTarget(null); }}>
+        <AlertDialogContent className="w-[90vw] max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการอนุมัติ</AlertDialogTitle>
+            <AlertDialogTitle>ยืนยันการปฏิเสธ</AlertDialogTitle>
             <AlertDialogDescription>
-              อนุมัติ <strong>{pendingApproval?.name}</strong> ให้เป็น <strong>{pendingApproval ? ROLE_LABEL[pendingApproval.role] : ""}</strong> ใช่ไหม?
+              ปฏิเสธคำขอเข้าร่วมของ <strong>{rejectTarget?.name}</strong> ใช่ไหม?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setPendingApproval(null); setApprovingId(null); }}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setRejectTarget(null)}>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={() => {
-                if (pendingApproval) { approve(pendingApproval.uid, pendingApproval.role); setPendingApproval(null); }
-              }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => { if (rejectTarget) { reject(rejectTarget.uid); setRejectTarget(null); } }}
             >
-              ยืนยันอนุมัติ
+              ยืนยันปฏิเสธ
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
